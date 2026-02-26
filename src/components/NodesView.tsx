@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { NodeInfo, Gateway } from '../types';
 import { GatewayClient } from '../gateway';
-import { Box, RefreshCw, Server, Smartphone } from 'lucide-react';
+import { RefreshCw, Server, Smartphone } from 'lucide-react';
 
 interface NodeWithGateway extends NodeInfo {
   gatewayId: string;

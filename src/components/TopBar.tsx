@@ -14,12 +14,12 @@ interface TopBarProps {
 
 export default function TopBar({
   activeGateway,
-  activeAgentId,
+  // activeAgentId,
   activeSessionKey,
   sidebarOpen,
   selectedModel,
   onToggleSidebar,
-  onChangeAgent,
+  // onChangeAgent,
   onChangeModel,
 }: TopBarProps) {
   const [showModelDropdown, setShowModelDropdown] = useState(false);

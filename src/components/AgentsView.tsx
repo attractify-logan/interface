@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, Server, Plus, Activity, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
+import { Server, Plus, Activity, ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 import type { Gateway, SessionInfo } from '../types';
 import type { AggregatedAgent, SpawnConfig } from '../hooks/useAgentSpawn';
 
