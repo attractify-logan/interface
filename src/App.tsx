@@ -292,6 +292,8 @@ export default function App() {
           }}
           activeAgentId={gw.activeAgentId}
           onReconnectGateway={gw.reconnectGateway}
+          onUpdateAgentModel={gw.updateAgentModel}
+          onToggleAdvancedReasoning={gw.toggleAdvancedReasoning}
           onSwitchAgent={(gatewayId, agentId) => {
             if (gw.activeGatewayId !== gatewayId) {
               gw.switchGateway(gatewayId);

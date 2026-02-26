@@ -19,6 +19,10 @@ export interface AgentInfo {
   id: string;
   name?: string;
   description?: string;
+  emoji?: string;
+  selectedModel?: string; // Per-agent model override
+  fallbackModel?: string; // Fallback model if primary fails
+  advancedReasoning?: boolean; // Enable thinking/reasoning modes
 }
 
 export interface ModelInfo {
