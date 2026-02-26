@@ -31,29 +31,29 @@ const CodeBlock = memo(function CodeBlock({ children, className, ...props }: any
   }, [children]);
 
   return (
-    <div className="bg-[var(--color-surface-code-block)] rounded-xl overflow-hidden my-4 border border-[var(--color-border)]">
-      <div className="bg-[var(--color-surface-code-header)] px-4 py-2 flex justify-between items-center text-xs">
+    <div className="bg-[var(--color-surface-code-block)] rounded-lg overflow-hidden my-2 border border-[var(--color-border)]">
+      <div className="bg-[var(--color-surface-code-header)] px-3 py-1.5 flex justify-between items-center text-[10px]">
         <span className="text-[var(--color-text-secondary)] font-medium">
           {language || 'code'}
         </span>
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+          className="flex items-center gap-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
         >
           {copied ? (
             <>
-              <Check size={12} />
+              <Check size={10} />
               <span>Copied</span>
             </>
           ) : (
             <>
-              <Copy size={12} />
+              <Copy size={10} />
               <span>Copy</span>
             </>
           )}
         </button>
       </div>
-      <pre className="p-4 overflow-x-auto">
+      <pre className="p-3 overflow-x-auto">
         <code className={className} {...props}>
           {children}
         </code>
@@ -127,14 +127,14 @@ const MessageBubble = memo(function MessageBubble({
   if (message.role === 'user') {
     return (
       <div
-        className="py-6 group message-enter"
+        className="py-3 group message-enter"
         onMouseEnter={() => { setShowActions(true); setShowTimestamp(true); }}
         onMouseLeave={() => { setShowActions(false); setShowTimestamp(false); }}
       >
         <div className="max-w-5xl mx-auto px-4 relative">
           <div className="flex justify-end">
             <div
-              className="bg-[var(--color-surface-user-msg)] text-[var(--color-text-primary)] rounded-2xl px-5 py-3.5 max-w-[85%] text-[15px] leading-relaxed whitespace-pre-wrap border border-[var(--color-border)]"
+              className="bg-[var(--color-surface-user-msg)] text-[var(--color-text-primary)] rounded-lg px-3 py-2 max-w-[85%] text-sm leading-snug whitespace-pre-wrap border border-[var(--color-border)]"
               style={{ boxShadow: 'var(--shadow-sm)' }}
             >
               {text}
@@ -142,18 +142,18 @@ const MessageBubble = memo(function MessageBubble({
           </div>
           {/* Action bar */}
           {showActions && (
-            <div className="absolute top-1 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-0.5 right-4 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={handleCopy}
-                className="p-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] rounded-lg border border-[var(--color-border)] transition-all hover-lift"
+                className="p-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] rounded border border-[var(--color-border)] transition-all"
                 title="Copy"
               >
-                {copied ? <Check size={12} /> : <Copy size={12} />}
+                {copied ? <Check size={11} /> : <Copy size={11} />}
               </button>
             </div>
           )}
           {/* Timestamp */}
-          <div className={`text-xs text-[var(--color-text-muted)] mt-1 text-right transition-opacity duration-200 ${showTimestamp && message.timestamp ? 'opacity-100' : 'opacity-0 pointer-events-none'} h-4`}>
+          <div className={`text-[10px] text-[var(--color-text-muted)] mt-0.5 text-right transition-opacity duration-200 ${showTimestamp && message.timestamp ? 'opacity-100' : 'opacity-0 pointer-events-none'} h-3`}>
             {message.timestamp ? getRelativeTime() : ''}
           </div>
         </div>
@@ -163,28 +163,28 @@ const MessageBubble = memo(function MessageBubble({
 
   return (
     <div
-      className="py-6 group message-enter"
+      className="py-3 group message-enter"
       onMouseEnter={() => { setShowActions(true); setShowTimestamp(true); }}
       onMouseLeave={() => { setShowActions(false); setShowTimestamp(false); }}
     >
       <div className="max-w-5xl mx-auto px-4 relative">
         {/* Action bar */}
         {showActions && (
-          <div className="absolute top-1 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute top-0.5 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={handleCopy}
-              className="p-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] rounded-lg border border-[var(--color-border)] transition-all hover-lift"
+              className="p-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] rounded border border-[var(--color-border)] transition-all"
               title="Copy"
             >
-              {copied ? <Check size={12} /> : <Copy size={12} />}
+              {copied ? <Check size={11} /> : <Copy size={11} />}
             </button>
           </div>
         )}
-        <div className="text-[15px] leading-7 text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-3 prose-headings:mt-6 prose-headings:mb-3 prose-li:my-1 prose-pre:my-4 prose-code:text-[13px]">
+        <div className="text-sm leading-relaxed text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-2 prose-headings:mt-4 prose-headings:mb-2 prose-li:my-0.5 prose-pre:my-3 prose-code:text-xs">
           {renderedContent}
         </div>
         {/* Timestamp */}
-        <div className={`text-xs text-[var(--color-text-muted)] mt-1 transition-opacity duration-200 ${showTimestamp && message.timestamp ? 'opacity-100' : 'opacity-0 pointer-events-none'} h-4`}>
+        <div className={`text-[10px] text-[var(--color-text-muted)] mt-0.5 transition-opacity duration-200 ${showTimestamp && message.timestamp ? 'opacity-100' : 'opacity-0 pointer-events-none'} h-3`}>
           {message.timestamp ? getRelativeTime() : ''}
         </div>
       </div>
@@ -242,10 +242,10 @@ const ChatInput = memo(function ChatInput({ connected, streaming, onSend, onAbor
   const showCharCount = charCount > 500;
 
   return (
-    <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)] pb-5 pt-4 px-4">
+    <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)] pb-3 pt-2 px-4">
       <div className="max-w-5xl mx-auto">
         <div
-          className="flex items-center gap-3 bg-[var(--color-surface-input)] rounded-2xl border-2 border-[var(--color-border-input)] focus-within:border-[var(--color-border-focus)] px-4 py-3 relative transition-all duration-200"
+          className="flex items-center gap-2 bg-[var(--color-surface-input)] rounded-lg border border-[var(--color-border-input)] focus-within:border-[var(--color-border-focus)] px-3 py-2 relative transition-all duration-200"
           style={{ boxShadow: 'var(--shadow-sm)' }}
         >
           <textarea
@@ -256,37 +256,37 @@ const ChatInput = memo(function ChatInput({ connected, streaming, onSend, onAbor
             placeholder={connected ? 'Send a message...' : 'Connect a gateway to start...'}
             disabled={!connected}
             rows={1}
-            className="flex-1 bg-transparent text-[15px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none disabled:opacity-50 leading-normal terminal-input"
-            style={{ minHeight: '24px', maxHeight: '200px' }}
+            className="flex-1 bg-transparent text-sm text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none disabled:opacity-50 leading-snug terminal-input"
+            style={{ minHeight: '20px', maxHeight: '200px' }}
           />
           {showCharCount && (
-            <div className="absolute bottom-3 right-16 text-xs text-[var(--color-text-muted)] font-medium">
+            <div className="absolute bottom-2 right-12 text-[10px] text-[var(--color-text-muted)] font-medium">
               {charCount.toLocaleString()}
             </div>
           )}
           {streaming ? (
             <button
               onClick={onAbort}
-              className="w-9 h-9 rounded-xl bg-[var(--status-offline)] hover:bg-[var(--status-offline)]/80 text-white flex items-center justify-center flex-shrink-0 transition-all hover-lift"
+              className="w-7 h-7 rounded-lg bg-[var(--status-offline)] hover:bg-[var(--status-offline)]/80 text-white flex items-center justify-center flex-shrink-0 transition-all"
               title="Stop generating"
               style={{ boxShadow: 'var(--shadow-sm)' }}
             >
-              <Square size={18} fill="currentColor" />
+              <Square size={16} fill="currentColor" />
             </button>
           ) : (
             <button
               onClick={handleSend}
               disabled={!input.trim() || !connected}
-              className="w-9 h-9 rounded-xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-[var(--color-surface)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 transition-all hover-lift"
+              className="w-7 h-7 rounded-lg bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-[var(--color-surface)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 transition-all"
               title="Send message (Enter)"
               style={{ boxShadow: input.trim() && connected ? 'var(--shadow-sm)' : 'none' }}
             >
-              <Send size={18} />
+              <Send size={16} />
             </button>
           )}
         </div>
-        <div className="text-xs text-[var(--color-text-muted)] mt-2 text-center">
-          <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] border border-[var(--color-border)] font-mono">Enter</kbd> to send • <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] border border-[var(--color-border)] font-mono">Shift+Enter</kbd> for new line
+        <div className="text-[10px] text-[var(--color-text-muted)] mt-1 text-center">
+          <kbd className="px-1 py-0.5 rounded bg-[var(--color-surface-hover)] border border-[var(--color-border)] font-mono text-[9px]">Enter</kbd> to send • <kbd className="px-1 py-0.5 rounded bg-[var(--color-surface-hover)] border border-[var(--color-border)] font-mono text-[9px]">Shift+Enter</kbd> for new line
         </div>
       </div>
     </div>
@@ -476,9 +476,9 @@ export default function ChatView({
 
           {/* Streaming */}
           {streaming && (
-            <div className="py-6">
+            <div className="py-3">
               <div className="max-w-5xl mx-auto px-4">
-                <div className="text-[15px] leading-7 text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-3 prose-headings:mt-6 prose-headings:mb-3 prose-li:my-1 prose-pre:my-4 prose-code:text-[13px]">
+                <div className="text-sm leading-relaxed text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-2 prose-headings:mt-4 prose-headings:mb-2 prose-li:my-0.5 prose-pre:my-3 prose-code:text-xs">
                   {streamingContent}
                 </div>
               </div>
