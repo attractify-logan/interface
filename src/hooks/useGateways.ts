@@ -308,6 +308,9 @@ export function useGateways() {
       setStreamText('');
       setStreaming(false);
 
+      // Set loading state BEFORE async loadHistory to prevent welcome screen flash
+      setLoadingHistory(true);
+
       // Load history from backend (don't clear messages first to avoid flash)
       await loadHistory(activeSessionKey, gwId);
 
@@ -472,10 +475,14 @@ export function useGateways() {
       setStreamText('');
       setStreaming(false);
 
+      // Set loading state BEFORE async loadHistory to prevent welcome screen flash
+      setLoadingHistory(true);
+
       if (activeGatewayId) {
         await loadHistory(key, activeGatewayId);
       } else {
         setMessages([]);
+        setLoadingHistory(false);
       }
     },
     [activeGatewayId, loadHistory]
