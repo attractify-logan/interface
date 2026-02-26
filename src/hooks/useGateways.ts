@@ -38,6 +38,7 @@ export function useGateways() {
   const [activeProcesses, setActiveProcesses] = useState<Map<string, boolean>>(new Map());
 
   const socketsRef = useRef<Map<string, ChatSocket>>(new Map());
+  const switchingRef = useRef(false); // Track when we're actively switching to prevent duplicate loads
 
   // Initialize - load gateways from backend on mount
   useEffect(() => {
@@ -246,7 +247,12 @@ export function useGateways() {
   const loadHistory = useCallback(
     async (sessionKey?: string, gwId?: string) => {
       const gatewayId = gwId || activeGatewayId;
-      if (!gatewayId || !gateways.has(gatewayId)) return;
+      if (!gatewayId || !gateways.has(gatewayId)) {
+        // No gateway selected - clear messages and exit
+        setMessages([]);
+        setLoadingHistory(false);
+        return;
+      }
 
       const key = sessionKey || activeSessionKey;
       setLoadingHistory(true);
@@ -266,7 +272,7 @@ export function useGateways() {
         setLoadingHistory(false);
       }
     },
-    [activeGatewayId, activeSessionKey]
+    [activeGatewayId, activeSessionKey, gateways]
   );
 
   // Load sessions from backend
@@ -287,8 +293,9 @@ export function useGateways() {
   }, [activeGatewayId]);
 
   // Load history when gateway or session changes
+  // BUT skip if we're actively switching (to prevent duplicate loads and race conditions)
   useEffect(() => {
-    if (activeGatewayId) {
+    if (activeGatewayId && !switchingRef.current) {
       loadHistory();
       loadSessions();
     }
@@ -297,6 +304,13 @@ export function useGateways() {
   // Switch gateway
   const switchGateway = useCallback(
     async (gwId: string) => {
+      // CRITICAL: Set switching flag to prevent useEffect from loading history
+      switchingRef.current = true;
+
+      // CRITICAL: Set loading state FIRST to prevent welcome screen flash
+      setLoadingHistory(true);
+
+      // Then update gateway state
       setActiveGatewayId(gwId);
       saveActiveGateway(gwId);
 
@@ -308,9 +322,6 @@ export function useGateways() {
       setStreamText('');
       setStreaming(false);
 
-      // Set loading state BEFORE async loadHistory to prevent welcome screen flash
-      setLoadingHistory(true);
-
       // Load history from backend (don't clear messages first to avoid flash)
       await loadHistory(activeSessionKey, gwId);
 
@@ -321,6 +332,9 @@ export function useGateways() {
       } catch {
         setSessions([]);
       }
+
+      // Clear switching flag
+      switchingRef.current = false;
     },
     [gateways, activeSessionKey, loadHistory]
   );
@@ -471,12 +485,16 @@ export function useGateways() {
   // Switch session
   const switchSession = useCallback(
     async (key: string) => {
+      // CRITICAL: Set switching flag to prevent useEffect from loading history
+      switchingRef.current = true;
+
+      // CRITICAL: Set loading state FIRST to prevent welcome screen flash
+      setLoadingHistory(true);
+
+      // Then update other state
       setActiveSessionKey(key);
       setStreamText('');
       setStreaming(false);
-
-      // Set loading state BEFORE async loadHistory to prevent welcome screen flash
-      setLoadingHistory(true);
 
       if (activeGatewayId) {
         await loadHistory(key, activeGatewayId);
@@ -484,6 +502,9 @@ export function useGateways() {
         setMessages([]);
         setLoadingHistory(false);
       }
+
+      // Clear switching flag
+      switchingRef.current = false;
     },
     [activeGatewayId, loadHistory]
   );

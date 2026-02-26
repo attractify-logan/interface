@@ -690,17 +690,19 @@ export default function ChatView({
         className="flex-1 overflow-y-auto"
       >
         <div className="pb-4">
-          {messages.length === 0 && !streaming && !loadingHistory && (
-            <EmptyState
-              connected={connected}
-              onSend={onSend}
-            />
-          )}
-
+          {/* Show loading indicator if loading history */}
           {loadingHistory && messages.length === 0 && (
             <div className="text-center text-[var(--color-text-muted)] mt-32">
               <div className="text-sm animate-pulse">Loading history...</div>
             </div>
+          )}
+
+          {/* Only show welcome screen if truly empty AND not loading AND not streaming AND has stream text */}
+          {messages.length === 0 && !streaming && !loadingHistory && !streamText && (
+            <EmptyState
+              connected={connected}
+              onSend={onSend}
+            />
           )}
 
           {messages.map((msg, i) => (
