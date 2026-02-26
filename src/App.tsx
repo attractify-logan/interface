@@ -310,6 +310,7 @@ export default function App() {
             setActiveTab('chat');
           }}
           streaming={federatedChat.activeFederatedSession ? federatedChat.streaming : gw.streaming}
+          activeProcesses={gw.activeProcesses}
           theme={theme}
           onToggleTheme={toggleTheme}
         />
