@@ -14,6 +14,7 @@ import SessionsView from './components/SessionsView';
 import NodesView from './components/NodesView';
 import CronView from './components/CronView';
 import ConfigView from './components/ConfigView';
+import AboutView from './components/AboutView';
 import SettingsModal from './components/SettingsModal';
 import { CommandPalette } from './components/CommandPalette';
 import { SpawnFAB } from './components/SpawnFAB';
@@ -69,7 +70,7 @@ export default function App() {
 
   // Keyboard shortcuts
   useEffect(() => {
-    const TABS_LIST: Tab[] = ['chat', 'dashboard', 'agents', 'sessions', 'nodes', 'cron', 'config'];
+    const TABS_LIST: Tab[] = ['chat', 'dashboard', 'agents', 'sessions', 'nodes', 'cron', 'config', 'about'];
 
     const handler = (e: KeyboardEvent) => {
       // Cmd+K open command palette
@@ -243,6 +244,8 @@ export default function App() {
         return <CronView gateways={gw.gateways} getClient={gw.getClient} />;
       case 'config':
         return <ConfigView getActiveClient={gw.getActiveClient} />;
+      case 'about':
+        return <AboutView />;
     }
   };
 

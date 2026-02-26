@@ -91,7 +91,7 @@ export interface Gateway {
   status?: GatewayStatus;
 }
 
-export type Tab = 'chat' | 'dashboard' | 'agents' | 'sessions' | 'nodes' | 'cron' | 'config';
+export type Tab = 'chat' | 'dashboard' | 'agents' | 'sessions' | 'nodes' | 'cron' | 'config' | 'about';
 
 export type Theme = 'dark' | 'light' | 'terminal';
 

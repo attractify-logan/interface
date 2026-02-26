@@ -16,7 +16,8 @@ import {
   Link2,
   Bell,
   BellOff,
-  RefreshCw
+  RefreshCw,
+  Info
 } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -59,6 +60,7 @@ const TABS: { id: Tab; label: string; icon: any }[] = [
   { id: 'nodes', label: 'Nodes', icon: Box },
   { id: 'cron', label: 'Cron', icon: Clock },
   { id: 'config', label: 'Config', icon: Settings },
+  { id: 'about', label: 'About', icon: Info },
 ];
 
 function formatSessionName(key: string, isFederated: boolean = false): string {
