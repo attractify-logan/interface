@@ -47,6 +47,7 @@ interface SidebarProps {
   onReconnectGateway?: (config: { id: string; name: string; url: string }) => Promise<void>;
   activeAgentId?: string | null;
   streaming?: boolean;
+  activeProcesses?: Map<string, boolean>;
   theme: 'dark' | 'light' | 'terminal';
   onToggleTheme: () => void;
 }
@@ -104,6 +105,7 @@ export default function Sidebar({
   onReconnectGateway,
   activeAgentId,
   streaming = false,
+  activeProcesses = new Map(),
   theme,
   onToggleTheme,
 }: SidebarProps) {
@@ -290,6 +292,7 @@ export default function Sidebar({
                 <div className="mt-2 pt-2 border-t border-[var(--color-border)] space-y-0.5">
                   {gw.agents.map(agent => {
                     const isActive = activeGatewayId === gw.config.id && activeAgentId === agent.id;
+                    const isProcessing = activeProcesses.get(gw.config.id) === true;
                     // Get emoji from agent if available, otherwise use default
                     const agentEmoji = (agent as any).emoji || '🤖';
                     // Find subagent sessions for this agent
@@ -317,6 +320,8 @@ export default function Sidebar({
                             ) : (
                               <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-online)] flex-shrink-0" />
                             )
+                          ) : isProcessing ? (
+                            <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] flex-shrink-0 animate-pulse" title="Processing" />
                           ) : null}
                           <span className="text-sm">{agentEmoji}</span>
                           <span className="truncate flex-1">{agent.name || agent.id}</span>

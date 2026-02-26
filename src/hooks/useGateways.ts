@@ -35,6 +35,7 @@ export function useGateways() {
   const [streamText, setStreamText] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeProcesses, setActiveProcesses] = useState<Map<string, boolean>>(new Map());
 
   const socketsRef = useRef<Map<string, ChatSocket>>(new Map());
 
@@ -147,11 +148,21 @@ export function useGateways() {
       const { state, text, error: streamError } = data;
 
       if (state === 'delta') {
+        // Mark gateway as processing
+        setActiveProcesses(prev => new Map(prev).set(gwId, true));
+
         // Accumulate text during streaming
         if (text) {
           setStreamText(text);
         }
       } else if (state === 'final') {
+        // Clear processing state for this gateway
+        setActiveProcesses(prev => {
+          const next = new Map(prev);
+          next.delete(gwId);
+          return next;
+        });
+
         // Final message - add to history
         if (text) {
           const cleaned = stripThinking(text);
@@ -184,6 +195,13 @@ export function useGateways() {
         setStreamText('');
         setStreaming(false);
       } else if (state === 'error') {
+        // Clear processing state for this gateway
+        setActiveProcesses(prev => {
+          const next = new Map(prev);
+          next.delete(gwId);
+          return next;
+        });
+
         setError(streamError || 'Stream error');
         setStreamText('');
         setStreaming(false);
@@ -292,7 +310,6 @@ export function useGateways() {
 
       // Load history from backend (don't clear messages first to avoid flash)
       await loadHistory(activeSessionKey, gwId);
-      }
 
       // Load sessions
       try {
@@ -302,7 +319,7 @@ export function useGateways() {
         setSessions([]);
       }
     },
-    [gateways, activeSessionKey]
+    [gateways, activeSessionKey, loadHistory]
   );
 
   // Send message via WebSocket
@@ -486,6 +503,7 @@ export function useGateways() {
     streamText,
     streaming,
     error,
+    activeProcesses,
     setActiveAgentId,
     switchGateway,
     switchSession,
