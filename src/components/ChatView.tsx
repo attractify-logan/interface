@@ -133,7 +133,7 @@ const MessageBubble = memo(function MessageBubble({
         onMouseEnter={() => { setShowActions(true); setShowTimestamp(true); }}
         onMouseLeave={() => { setShowActions(false); setShowTimestamp(false); }}
       >
-        <div className="max-w-5xl mx-auto px-4 relative">
+        <div className="max-w-5xl mx-auto px-2 relative">
           <div className="flex justify-end">
             <div
               className="bg-[var(--color-surface-user-msg)] text-[var(--color-text-primary)] rounded-lg px-2.5 py-1.5 max-w-[85%] text-sm leading-snug whitespace-pre-wrap border border-[var(--color-border)]"
@@ -144,7 +144,7 @@ const MessageBubble = memo(function MessageBubble({
           </div>
           {/* Action bar */}
           {showActions && (
-            <div className="absolute top-0.5 right-4 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="absolute top-0.5 right-2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={handleCopy}
                 className="p-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] rounded border border-[var(--color-border)] transition-all"
@@ -169,10 +169,10 @@ const MessageBubble = memo(function MessageBubble({
       onMouseEnter={() => { setShowActions(true); setShowTimestamp(true); }}
       onMouseLeave={() => { setShowActions(false); setShowTimestamp(false); }}
     >
-      <div className="max-w-5xl mx-auto px-4 relative">
+      <div className="max-w-5xl mx-auto px-2 relative">
         {/* Action bar */}
         {showActions && (
-          <div className="absolute top-0.5 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute top-0.5 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
               onClick={handleCopy}
               className="p-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] rounded border border-[var(--color-border)] transition-all"
@@ -244,7 +244,7 @@ const ChatInput = memo(function ChatInput({ connected, streaming, onSend, onAbor
   const showCharCount = charCount > 500;
 
   return (
-    <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)] pb-3 pt-2 px-4">
+    <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)] pb-3 pt-2 px-2">
       <div className="max-w-5xl mx-auto">
         <div
           className="flex items-center gap-2 bg-[var(--color-surface-input)] rounded-lg border border-[var(--color-border-input)] focus-within:border-[var(--color-border-focus)] px-3 py-2 relative transition-all duration-200"
@@ -668,7 +668,7 @@ export default function ChatView({
           {/* Streaming */}
           {streaming && (
             <div className="py-1.5">
-              <div className="max-w-5xl mx-auto px-4">
+              <div className="max-w-5xl mx-auto px-2">
                 <div className="text-sm leading-tight text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-1.5 prose-headings:mt-3 prose-headings:mb-1.5 prose-li:my-0.5 prose-pre:my-2 prose-code:text-xs">
                   {streamingContent}
                 </div>
