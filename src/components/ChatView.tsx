@@ -314,7 +314,7 @@ const EmptyState = memo(function EmptyState({
     <div className="text-center text-[var(--color-text-muted)] mt-32 px-4">
       <div className="text-7xl mb-6 animate-pulse">🤡</div>
       <div className="text-2xl font-bold text-[var(--color-text-primary)] mb-3">
-        Welcome to 🤡 Interface
+        Welcome to Interface 🤡
       </div>
       <div className="text-base mb-10 text-[var(--color-text-secondary)]">
         {connected ? 'The multi-gateway chat experience. Choose a suggestion or type your own message.' : 'Connect a gateway to begin your conversation'}

@@ -8,6 +8,8 @@ A multi-gateway chat application for OpenClaw AI agents with federated conversat
 
 Interface is a full-stack chat application that connects to multiple OpenClaw gateway instances simultaneously, enabling seamless conversations across distributed AI agents. Built with a terminal-inspired dark UI and real-time WebSocket communication.
 
+> **Note:** Interface is an independent project and is **not affiliated with, endorsed by, or sponsored by** the Umami YouTube series. The clown/mischief vibe is a creative tribute only.
+
 ## Features
 
 ### Multi-Gateway Support

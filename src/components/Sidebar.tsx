@@ -161,7 +161,7 @@ export default function Sidebar({
           <span className="text-2xl leading-none" style={{ lineHeight: 1 }}>🤡</span>
           <div>
             <h1 className="text-lg font-bold leading-none text-[var(--color-text-primary)]" style={{ lineHeight: 1 }}>
-              Interface
+              Interface 🤡
             </h1>
             <p className="text-xs text-[var(--color-text-muted)] mt-1" style={{ lineHeight: 1 }}>Multi-Gateway Chat</p>
           </div>

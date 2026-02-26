@@ -13,7 +13,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
     if (this.state.error) {
       return (
         <div style={{ padding: 40, color: '#e88', background: '#1a1a1a', minHeight: '100vh', fontFamily: 'monospace' }}>
-          <h1>🤡 Interface crashed</h1>
+          <h1>Interface 🤡 crashed</h1>
           <pre style={{ whiteSpace: 'pre-wrap', color: '#ccc' }}>{this.state.error.message}</pre>
           <pre style={{ whiteSpace: 'pre-wrap', color: '#888', fontSize: 12 }}>{this.state.error.stack}</pre>
           <button onClick={() => { localStorage.clear(); window.location.reload(); }}
