@@ -1,0 +1,7 @@
+{
+  "id": "local-gateway",
+  "name": "Local OpenClaw",
+  "url": "ws://localhost:18789",
+  "token": "your-token-here",
+  "password": null
+}

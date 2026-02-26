@@ -1,0 +1,588 @@
+@import "tailwindcss";
+
+@theme {
+  --color-surface: #0a0a0a;
+  --color-surface-raised: #1a1a1e;
+  --color-surface-hover: #2a2a2e;
+  --color-surface-input: #1a1a1e;
+  --color-surface-user-msg: #303030;
+  --color-surface-code-block: #1e1e2e;
+  --color-surface-code-header: #14141f;
+  --color-border: #2a2a2e;
+  --color-border-focus: #4a4a4e;
+  --color-border-input: #333;
+  --color-text-primary: #e8e8e8;
+  --color-text-secondary: #999;
+  --color-text-muted: #666;
+  --color-accent: #e8e8e8;
+  --color-accent-hover: #fff;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* New visual effect variables */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(232, 232, 232, 0.1);
+  --gradient-card: linear-gradient(135deg, rgba(232, 232, 232, 0.03) 0%, rgba(232, 232, 232, 0.01) 100%);
+  --gradient-active: linear-gradient(135deg, rgba(232, 232, 232, 0.08) 0%, rgba(232, 232, 232, 0.04) 100%);
+  --status-online: #22c55e;
+  --status-offline: #ef4444;
+  --status-warning: #f59e0b;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  transition: background 0.2s, color 0.2s;
+}
+
+/* Light mode */
+.light {
+  --color-surface: #fafafa;
+  --color-surface-raised: #f4f4f5;
+  --color-surface-hover: #e4e4e7;
+  --color-surface-input: #f0f0f2;
+  --color-surface-user-msg: #e8e8ec;
+  --color-surface-code-block: #f4f4f5;
+  --color-surface-code-header: #e8e8ec;
+  --color-border: #e4e4e7;
+  --color-border-focus: #a1a1aa;
+  --color-border-input: #d0d0d4;
+  --color-text-primary: #09090b;
+  --color-text-secondary: #52525b;
+  --color-text-muted: #a1a1aa;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-glow: 0 0 20px rgba(9, 9, 11, 0.05);
+  --gradient-card: linear-gradient(135deg, rgba(9, 9, 11, 0.02) 0%, rgba(9, 9, 11, 0.01) 100%);
+  --gradient-active: linear-gradient(135deg, rgba(9, 9, 11, 0.05) 0%, rgba(9, 9, 11, 0.03) 100%);
+  --status-online: #22c55e;
+  --status-offline: #ef4444;
+  --status-warning: #f59e0b;
+}
+.light, .light body, .light #root {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+}
+
+/* Terminal theme */
+.terminal {
+  --color-surface: #0a0a0a;
+  --color-surface-raised: #0f1a0f;
+  --color-surface-hover: #1a2a1a;
+  --color-surface-input: #0a120a;
+  --color-surface-user-msg: #0f1f0f;
+  --color-surface-code-block: #0a0f0a;
+  --color-surface-code-header: #0f140f;
+  --color-border: #1a3a1a;
+  --color-border-focus: #2a4a2a;
+  --color-border-input: #1a3a1a;
+  --color-text-primary: #33ff33;
+  --color-text-secondary: #22bb22;
+  --color-text-muted: #117711;
+  --color-accent: #33ff33;
+  --color-accent-hover: #44ff44;
+
+  --shadow-sm: 0 1px 2px rgba(51, 255, 51, 0.1);
+  --shadow-md: 0 4px 6px rgba(51, 255, 51, 0.15);
+  --shadow-lg: 0 10px 15px rgba(51, 255, 51, 0.2);
+  --shadow-glow: 0 0 20px rgba(51, 255, 51, 0.3);
+  --gradient-card: linear-gradient(135deg, rgba(51, 255, 51, 0.05) 0%, rgba(51, 255, 51, 0.02) 100%);
+  --gradient-active: linear-gradient(135deg, rgba(51, 255, 51, 0.1) 0%, rgba(51, 255, 51, 0.05) 100%);
+  --status-online: #33ff33;
+  --status-offline: #ff3333;
+  --status-warning: #ffaa33;
+}
+.terminal, .terminal body, .terminal #root {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #52525b; }
+.light ::-webkit-scrollbar-thumb { background: #d4d4d8; }
+.light ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+.terminal ::-webkit-scrollbar-thumb { background: #22bb22; }
+.terminal ::-webkit-scrollbar-thumb:hover { background: #33ff33; }
+
+/* Prose / Markdown */
+.prose {
+  line-height: 1.75;
+}
+
+.prose pre {
+  background: #1e1e2e !important;
+  border-radius: 8px;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 12px 0;
+  font-size: 13px;
+  border: 1px solid #2a2a2e;
+}
+.light .prose pre {
+  background: #f4f4f5 !important;
+  border-color: #e4e4e7;
+}
+.terminal .prose pre {
+  background: var(--color-surface-code-block) !important;
+  border-color: var(--color-border);
+}
+
+.prose code {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+}
+
+.prose p code {
+  background: #1a1a1e;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+  border: 1px solid #2a2a2e;
+}
+.light .prose p code {
+  background: #e4e4e7;
+  border-color: #d4d4d8;
+}
+.terminal .prose p code {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+}
+
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 12px 0;
+  font-size: 14px;
+}
+
+.prose th, .prose td {
+  border: 1px solid #2a2a2e;
+  padding: 8px 12px;
+  text-align: left;
+}
+.light .prose th, .light .prose td {
+  border-color: #e4e4e7;
+}
+.terminal .prose th, .terminal .prose td {
+  border-color: var(--color-border);
+}
+
+.prose th {
+  background: #1a1a1e;
+  font-weight: 600;
+}
+.light .prose th {
+  background: #f4f4f5;
+}
+.terminal .prose th {
+  background: var(--color-surface-raised);
+}
+
+.prose a {
+  color: #6b9eff;
+  text-decoration: none;
+}
+.prose a:hover {
+  text-decoration: underline;
+}
+
+.prose blockquote {
+  border-left: 3px solid #666;
+  padding-left: 16px;
+  margin: 12px 0;
+  color: var(--color-text-secondary);
+}
+
+.prose hr {
+  border-color: #2a2a2e;
+  margin: 20px 0;
+}
+.light .prose hr {
+  border-color: #e4e4e7;
+}
+.terminal .prose hr {
+  border-color: var(--color-border);
+}
+
+/* Selection */
+::selection {
+  background: #3b82f640;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.message-enter {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Terminal CRT effects */
+.terminal::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 9999;
+  animation: scanline 8s linear infinite;
+}
+
+.terminal::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, rgba(51, 255, 51, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+@keyframes scanline {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 100%;
+  }
+}
+
+/* Terminal text glow */
+.terminal .glow-text {
+  text-shadow: 0 0 10px rgba(51, 255, 51, 0.5);
+}
+
+/* Hover lift effect */
+.hover-lift {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+/* Smooth transitions */
+aside {
+  transition: width 0.2s ease-out;
+}
+
+/* Terminal input placeholder */
+.terminal .terminal-input::placeholder {
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+}
+.terminal .terminal-input::placeholder::before {
+  content: '$ ';
+}
+
+/* ============================================
+   AGENT SPAWN UI ANIMATIONS & STYLES
+   ============================================ */
+
+/* Command Palette Animations */
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* FAB Animations */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(232, 232, 232, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(232, 232, 232, 0.4);
+  }
+}
+
+@keyframes spawn-ripple {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes card-lift {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes rocket-launch {
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(-5deg);
+  }
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+}
+
+/* Utility Classes */
+.animate-slide-up {
+  animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Command Palette Styles */
+.palette-item {
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.palette-item:hover {
+  background: var(--color-surface-hover);
+}
+
+.palette-item-selected {
+  background: var(--gradient-active);
+  border-left: 2px solid var(--color-accent);
+  padding-left: calc(1rem - 2px);
+}
+
+.kbd {
+  display: inline-block;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-family: 'SF Mono', monospace;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Terminal theme scanline overlay for palette */
+.scanline-overlay {
+  position: relative;
+}
+
+.terminal .scanline-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(18, 16, 16, 0) 50%,
+    rgba(0, 0, 0, 0.25) 50%
+  );
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.3;
+}
+
+/* Agent Spawn Card Styles */
+.agent-spawn-card {
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.agent-spawn-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg), 0 0 0 1px var(--color-accent);
+}
+
+.card-expanded {
+  box-shadow: var(--shadow-glow);
+}
+
+.status-pulse {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+/* Spawn Button Effects */
+.spawn-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.spawn-button:hover:not(:disabled) {
+  background: var(--color-accent-hover);
+  animation: rocket-launch 0.5s ease-in-out;
+}
+
+.spawn-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.spawn-button::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.spawn-button:active:not(:disabled)::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* FAB Styles */
+.fab-main {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+.fab-main:hover {
+  transform: scale(1.1);
+  animation: none;
+}
+
+.fab-main:active {
+  transform: scale(0.95);
+}
+
+.fab-main-open {
+  animation: none;
+  box-shadow: var(--shadow-md);
+}
+
+.fab-menu-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: var(--shadow-md);
+}
+
+.fab-menu-item:hover {
+  transform: translateX(-4px) scale(1.02);
+  box-shadow: var(--shadow-lg);
+}
+
+.fab-menu-item:active {
+  transform: translateX(-2px) scale(0.98);
+}
+
+/* Hover scale utility */
+.hover\:scale-102:hover {
+  transform: scale(1.02);
+}
+
+/* Focus states */
+.focus\:border-accent:focus {
+  border-color: var(--color-accent) !important;
+}
+
+/* Rotate utility */
+.rotate-45 {
+  transform: rotate(45deg);
+}

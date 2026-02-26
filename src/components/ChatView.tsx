@@ -1,0 +1,505 @@
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import type { ChatMessage, Gateway } from '../types';
+import { extractText, stripThinking } from '../hooks/useGateways';
+import { Send, Square, ArrowDown, Copy, Check } from 'lucide-react';
+
+interface ChatViewProps {
+  messages: ChatMessage[];
+  streamText: string;
+  streaming: boolean;
+  activeGateway: Gateway | null;
+  error: string | null;
+  onSend: (text: string) => void;
+  onAbort: () => void;
+  onDismissError: () => void;
+}
+
+// Code block component with header and copy button
+const CodeBlock = memo(function CodeBlock({ children, className, ...props }: any) {
+  const [copied, setCopied] = useState(false);
+  const match = /language-(\w+)/.exec(className || '');
+  const language = match ? match[1] : '';
+
+  const handleCopy = useCallback(() => {
+    const codeText = children?.[0] || '';
+    navigator.clipboard.writeText(String(codeText).trim());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [children]);
+
+  return (
+    <div className="bg-[var(--color-surface-code-block)] rounded-xl overflow-hidden my-4 border border-[var(--color-border)]">
+      <div className="bg-[var(--color-surface-code-header)] px-4 py-2 flex justify-between items-center text-xs">
+        <span className="text-[var(--color-text-secondary)] font-medium">
+          {language || 'code'}
+        </span>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+        >
+          {copied ? (
+            <>
+              <Check size={12} />
+              <span>Copied</span>
+            </>
+          ) : (
+            <>
+              <Copy size={12} />
+              <span>Copy</span>
+            </>
+          )}
+        </button>
+      </div>
+      <pre className="p-4 overflow-x-auto">
+        <code className={className} {...props}>
+          {children}
+        </code>
+      </pre>
+    </div>
+  );
+});
+
+// Memoized MessageBubble component
+const MessageBubble = memo(function MessageBubble({
+  message,
+  onEdit
+}: {
+  message: ChatMessage;
+  onEdit?: (text: string) => void;
+}) {
+  const [showActions, setShowActions] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [showTimestamp, setShowTimestamp] = useState(false);
+  const text = extractText(message.content);
+
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [text]);
+
+  const getRelativeTime = useCallback(() => {
+    if (!message.timestamp) return '';
+    const now = Date.now();
+    const diff = now - message.timestamp;
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `${days}d ago`;
+    if (hours > 0) return `${hours}h ago`;
+    if (minutes > 0) return `${minutes}m ago`;
+    return 'Just now';
+  }, [message.timestamp]);
+
+  // Memoize the markdown rendering
+  const renderedContent = useMemo(() => {
+    const cleanedText = stripThinking(text);
+
+    return (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          code({ inline, className, children, ...props }: any) {
+            if (inline) {
+              return (
+                <code className="bg-[var(--color-surface-raised)] px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+                  {children}
+                </code>
+              );
+            }
+            return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
+          },
+          pre({ children }: any) {
+            return <>{children}</>;
+          },
+        }}
+      >
+        {cleanedText}
+      </ReactMarkdown>
+    );
+  }, [text]);
+
+  if (message.role === 'user') {
+    return (
+      <div
+        className="py-6 group message-enter"
+        onMouseEnter={() => { setShowActions(true); setShowTimestamp(true); }}
+        onMouseLeave={() => { setShowActions(false); setShowTimestamp(false); }}
+      >
+        <div className="max-w-5xl mx-auto px-4 relative">
+          <div className="flex justify-end">
+            <div
+              className="bg-[var(--color-surface-user-msg)] text-[var(--color-text-primary)] rounded-2xl px-5 py-3.5 max-w-[85%] text-[15px] leading-relaxed whitespace-pre-wrap border border-[var(--color-border)]"
+              style={{ boxShadow: 'var(--shadow-sm)' }}
+            >
+              {text}
+            </div>
+          </div>
+          {/* Action bar */}
+          {showActions && (
+            <div className="absolute top-1 right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={handleCopy}
+                className="p-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] rounded-lg border border-[var(--color-border)] transition-all hover-lift"
+                title="Copy"
+              >
+                {copied ? <Check size={12} /> : <Copy size={12} />}
+              </button>
+            </div>
+          )}
+          {/* Timestamp */}
+          <div className={`text-xs text-[var(--color-text-muted)] mt-1 text-right transition-opacity duration-200 ${showTimestamp && message.timestamp ? 'opacity-100' : 'opacity-0 pointer-events-none'} h-4`}>
+            {message.timestamp ? getRelativeTime() : ''}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="py-6 group message-enter"
+      onMouseEnter={() => { setShowActions(true); setShowTimestamp(true); }}
+      onMouseLeave={() => { setShowActions(false); setShowTimestamp(false); }}
+    >
+      <div className="max-w-5xl mx-auto px-4 relative">
+        {/* Action bar */}
+        {showActions && (
+          <div className="absolute top-1 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={handleCopy}
+              className="p-2 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] bg-[var(--color-surface-raised)] rounded-lg border border-[var(--color-border)] transition-all hover-lift"
+              title="Copy"
+            >
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+            </button>
+          </div>
+        )}
+        <div className="text-[15px] leading-7 text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-3 prose-headings:mt-6 prose-headings:mb-3 prose-li:my-1 prose-pre:my-4 prose-code:text-[13px]">
+          {renderedContent}
+        </div>
+        {/* Timestamp */}
+        <div className={`text-xs text-[var(--color-text-muted)] mt-1 transition-opacity duration-200 ${showTimestamp && message.timestamp ? 'opacity-100' : 'opacity-0 pointer-events-none'} h-4`}>
+          {message.timestamp ? getRelativeTime() : ''}
+        </div>
+      </div>
+    </div>
+  );
+}, (prevProps, nextProps) => {
+  const prevText = extractText(prevProps.message.content);
+  const nextText = extractText(nextProps.message.content);
+  return prevText === nextText && prevProps.message.timestamp === nextProps.message.timestamp;
+});
+
+// Separate memoized input component
+interface ChatInputProps {
+  connected: boolean;
+  streaming: boolean;
+  onSend: (text: string) => void;
+  onAbort: () => void;
+}
+
+const ChatInput = memo(function ChatInput({ connected, streaming, onSend, onAbort }: ChatInputProps) {
+  const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  const handleSend = useCallback(() => {
+    if (!input.trim() || streaming) return;
+    onSend(input.trim());
+    setInput('');
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      // Refocus immediately after sending
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [input, streaming, onSend]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // Enter or Cmd+Enter to send
+    if ((e.key === 'Enter' && !e.shiftKey) || (e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInput(e.target.value);
+    const target = e.target;
+    target.style.height = 'auto';
+    target.style.height = Math.min(target.scrollHeight, 200) + 'px';
+  }, []);
+
+  const charCount = input.length;
+  const showCharCount = charCount > 500;
+
+  return (
+    <div className="border-t border-[var(--color-border)] bg-[var(--color-surface)] pb-5 pt-4 px-4">
+      <div className="max-w-5xl mx-auto">
+        <div
+          className="flex items-center gap-3 bg-[var(--color-surface-input)] rounded-2xl border-2 border-[var(--color-border-input)] focus-within:border-[var(--color-border-focus)] px-4 py-3 relative transition-all duration-200"
+          style={{ boxShadow: 'var(--shadow-sm)' }}
+        >
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder={connected ? 'Send a message...' : 'Connect a gateway to start...'}
+            disabled={!connected}
+            rows={1}
+            className="flex-1 bg-transparent text-[15px] text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] resize-none focus:outline-none disabled:opacity-50 leading-normal terminal-input"
+            style={{ minHeight: '24px', maxHeight: '200px' }}
+          />
+          {showCharCount && (
+            <div className="absolute bottom-3 right-16 text-xs text-[var(--color-text-muted)] font-medium">
+              {charCount.toLocaleString()}
+            </div>
+          )}
+          {streaming ? (
+            <button
+              onClick={onAbort}
+              className="w-9 h-9 rounded-xl bg-[var(--status-offline)] hover:bg-[var(--status-offline)]/80 text-white flex items-center justify-center flex-shrink-0 transition-all hover-lift"
+              title="Stop generating"
+              style={{ boxShadow: 'var(--shadow-sm)' }}
+            >
+              <Square size={18} fill="currentColor" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={!input.trim() || !connected}
+              className="w-9 h-9 rounded-xl bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-[var(--color-surface)] disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 transition-all hover-lift"
+              title="Send message (Enter)"
+              style={{ boxShadow: input.trim() && connected ? 'var(--shadow-sm)' : 'none' }}
+            >
+              <Send size={18} />
+            </button>
+          )}
+        </div>
+        <div className="text-xs text-[var(--color-text-muted)] mt-2 text-center">
+          <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] border border-[var(--color-border)] font-mono">Enter</kbd> to send • <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] border border-[var(--color-border)] font-mono">Shift+Enter</kbd> for new line
+        </div>
+      </div>
+    </div>
+  );
+});
+
+// Empty state with branded clown theme
+const EmptyState = memo(function EmptyState({
+  activeGateway,
+  connected,
+  onSend
+}: {
+  activeGateway: Gateway | null;
+  connected: boolean;
+  onSend: (text: string) => void;
+}) {
+  const suggestions = [
+    "What can you do?",
+    "Tell me a joke",
+    "Help me code something",
+    "Explain quantum computing"
+  ];
+
+  return (
+    <div className="text-center text-[var(--color-text-muted)] mt-32 px-4">
+      <div className="text-7xl mb-6 animate-pulse">🤡</div>
+      <div className="text-2xl font-bold text-[var(--color-text-primary)] mb-3">
+        Welcome to 🤡 Interface
+      </div>
+      <div className="text-base mb-10 text-[var(--color-text-secondary)]">
+        {connected ? 'The multi-gateway chat experience. Choose a suggestion or type your own message.' : 'Connect a gateway to begin your conversation'}
+      </div>
+
+      {connected && (
+        <div className="flex flex-wrap gap-3 justify-center max-w-2xl mx-auto">
+          {suggestions.map((suggestion, i) => (
+            <button
+              key={i}
+              onClick={() => onSend(suggestion)}
+              className="px-5 py-2.5 rounded-xl border border-[var(--color-border)] text-sm text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-focus)] transition-all duration-200 hover-lift"
+              style={{ background: 'var(--gradient-card)' }}
+            >
+              {suggestion}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+});
+
+export default function ChatView({
+  messages,
+  streamText,
+  streaming,
+  activeGateway,
+  error,
+  onSend,
+  onAbort,
+  onDismissError,
+}: ChatViewProps) {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const isInitialLoad = useRef(true);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+
+  // Auto-scroll
+  useEffect(() => {
+    if (isInitialLoad.current && messages.length > 0) {
+      isInitialLoad.current = false;
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    } else {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, streamText]);
+
+  // Track scroll position for scroll-to-bottom button
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    setShowScrollButton(distanceFromBottom > 200);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  const connected = activeGateway?.connected ?? false;
+
+  // Memoize streaming content
+  const streamingContent = useMemo(() => {
+    if (!streamText) {
+      return (
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full animate-bounce" />
+          <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full animate-bounce [animation-delay:150ms]" />
+          <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full animate-bounce [animation-delay:300ms]" />
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            code({ inline, className, children, ...props }: any) {
+              if (inline) {
+                return (
+                  <code className="bg-[var(--color-surface-raised)] px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+                    {children}
+                  </code>
+                );
+              }
+              return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
+            },
+            pre({ children }: any) {
+              return <>{children}</>;
+            },
+          }}
+        >
+          {stripThinking(streamText)}
+        </ReactMarkdown>
+        <span
+          className="inline-block w-2 h-5 rounded-sm animate-pulse ml-0.5"
+          style={{ background: 'var(--color-accent)' }}
+        />
+      </>
+    );
+  }, [streamText]);
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0">
+      {/* Error banner */}
+      {error && (
+        <div
+          className="border-b px-4 py-3 flex items-center justify-between"
+          style={{
+            background: 'var(--status-offline)',
+            borderColor: 'var(--status-offline)',
+            color: 'white'
+          }}
+        >
+          <span className="text-sm font-medium">{error}</span>
+          <button
+            onClick={onDismissError}
+            className="hover:opacity-80 text-sm ml-4 font-medium transition-opacity"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* Messages */}
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto"
+      >
+        <div className="pb-4">
+          {messages.length === 0 && !streaming && (
+            <EmptyState
+              activeGateway={activeGateway}
+              connected={connected}
+              onSend={onSend}
+            />
+          )}
+
+          {messages.map((msg, i) => (
+            <MessageBubble
+              key={i}
+              message={msg}
+              onEdit={msg.role === 'user' ? (text) => {
+                // TODO: Implement edit functionality
+                console.log('Edit message:', text);
+              } : undefined}
+            />
+          ))}
+
+          {/* Streaming */}
+          {streaming && (
+            <div className="py-6">
+              <div className="max-w-5xl mx-auto px-4">
+                <div className="text-[15px] leading-7 text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-3 prose-headings:mt-6 prose-headings:mb-3 prose-li:my-1 prose-pre:my-4 prose-code:text-[13px]">
+                  {streamingContent}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Scroll to bottom button */}
+        {showScrollButton && (
+          <button
+            onClick={scrollToBottom}
+            className="fixed bottom-32 right-8 rounded-full bg-[var(--color-accent)] text-[var(--color-surface)] p-3 transition-all hover-lift"
+            style={{ boxShadow: 'var(--shadow-lg)' }}
+            title="Scroll to bottom"
+          >
+            <ArrowDown size={20} />
+          </button>
+        )}
+      </div>
+
+      {/* Input - isolated component */}
+      <ChatInput
+        connected={connected}
+        streaming={streaming}
+        onSend={onSend}
+        onAbort={onAbort}
+      />
+    </div>
+  );
+}
