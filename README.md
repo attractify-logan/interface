@@ -8,8 +8,6 @@ A multi-gateway chat application for OpenClaw AI agents with federated conversat
 
 Interface is a full-stack chat application that connects to multiple OpenClaw gateway instances simultaneously, enabling seamless conversations across distributed AI agents. Built with a terminal-inspired dark UI and real-time WebSocket communication.
 
-> **🤡 Tribute:** The clown emoji is a heartfelt fan tribute to the YouTube series **"u m a m i"** and the character **Mischief**. I'm genuinely a huge fan of the series' creative spirit and its exploration of AI agents and digital mischief. This project has **no official affiliation, endorsement, or sponsorship** from the Umami series or its creators — this is purely one fan's appreciation for the inspiration.
-
 ## Features
 
 ### Multi-Gateway Support
@@ -224,3 +222,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ---
 
 **Built for seamless multi-gateway AI agent collaboration**
+
+## 🤡 Tribute
+
+The clown emoji is a heartfelt fan tribute to the YouTube series **"u m a m i"** and the character **Mischief**. I'm genuinely a huge fan of the series' creative spirit and its exploration of AI agents and digital mischief. This project has **no official affiliation, endorsement, or sponsorship** from the Umami series or its creators — this is purely one fan's appreciation for the inspiration.

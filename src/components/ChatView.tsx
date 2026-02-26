@@ -358,6 +358,14 @@ export default function ChatView({
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [fallbackDropdownOpen, setFallbackDropdownOpen] = useState(false);
+  const [showModelChangeConfirm, setShowModelChangeConfirm] = useState(false);
+  const [pendingModelChange, setPendingModelChange] = useState<{
+    modelId: string;
+    fallbackModelId?: string;
+    isFallback: boolean;
+  } | null>(null);
+  const [previousModel, setPreviousModel] = useState<string>('');
+  const [previousFallbackModel, setPreviousFallbackModel] = useState<string>('');
 
   // Auto-scroll
   useEffect(() => {
@@ -388,6 +396,45 @@ export default function ChatView({
     if (!activeGateway || !activeAgentId) return null;
     return activeGateway.agents.find(a => a.id === activeAgentId) || null;
   }, [activeGateway, activeAgentId]);
+
+  // Track current models to detect changes
+  useEffect(() => {
+    if (activeAgent) {
+      const currentModel = activeAgent.selectedModel || activeGateway?.defaultModel || '';
+      const currentFallback = activeAgent.fallbackModel || '';
+      setPreviousModel(currentModel);
+      setPreviousFallbackModel(currentFallback);
+    }
+  }, [activeAgent?.id]); // Only update when agent changes, not on model changes
+
+  // Handle model change confirmation
+  const handleConfirmModelChange = useCallback(() => {
+    setShowModelChangeConfirm(false);
+    setPendingModelChange(null);
+    // Trigger new session by reloading the page
+    window.location.reload();
+  }, []);
+
+  const handleCancelModelChange = useCallback(() => {
+    setShowModelChangeConfirm(false);
+    setPendingModelChange(null);
+    // Revert the dropdown by re-rendering (models will show previous values)
+  }, []);
+
+  const handleModelChangeRequest = useCallback((modelId: string, fallbackModelId?: string, isFallback: boolean = false) => {
+    if (!activeGateway || !activeAgent || !onUpdateAgentModel) return;
+
+    // Check if there are messages (context to lose)
+    if (messages.length > 0) {
+      setPendingModelChange({ modelId, fallbackModelId, isFallback });
+      setShowModelChangeConfirm(true);
+    } else {
+      // No messages, just change the model directly
+      onUpdateAgentModel(activeGateway.config.id, activeAgent.id, modelId, fallbackModelId);
+    }
+    setModelDropdownOpen(false);
+    setFallbackDropdownOpen(false);
+  }, [activeGateway, activeAgent, onUpdateAgentModel, messages.length]);
 
   // Calculate context percentage (approximate based on message count)
   const contextPercentage = useMemo(() => {
@@ -526,8 +573,7 @@ export default function ChatView({
                         <button
                           key={modelId}
                           onClick={() => {
-                            onUpdateAgentModel(activeGateway.config.id, activeAgent.id, modelId, agentFallbackModel);
-                            setModelDropdownOpen(false);
+                            handleModelChangeRequest(modelId, agentFallbackModel, false);
                           }}
                           className={`w-full text-left px-2 py-1.5 text-[10px] hover:bg-[var(--color-surface-hover)] transition-colors ${
                             isSelected ? 'text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-secondary)]'
@@ -569,8 +615,7 @@ export default function ChatView({
                   <div className="absolute top-full left-0 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg py-1 min-w-full z-50 max-h-60 overflow-y-auto">
                     <button
                       onClick={() => {
-                        onUpdateAgentModel(activeGateway.config.id, activeAgent.id, agentModel, '');
-                        setFallbackDropdownOpen(false);
+                        handleModelChangeRequest(agentModel, '', true);
                       }}
                       className="w-full text-left px-2 py-1.5 text-[10px] hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-muted)] italic"
                     >
@@ -584,8 +629,7 @@ export default function ChatView({
                         <button
                           key={modelId}
                           onClick={() => {
-                            onUpdateAgentModel(activeGateway.config.id, activeAgent.id, agentModel, modelId);
-                            setFallbackDropdownOpen(false);
+                            handleModelChangeRequest(agentModel, modelId, true);
                           }}
                           className={`w-full text-left px-2 py-1.5 text-[10px] hover:bg-[var(--color-surface-hover)] transition-colors ${
                             isSelected ? 'text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-secondary)]'
@@ -704,6 +748,58 @@ export default function ChatView({
         onSend={onSend}
         onAbort={onAbort}
       />
+
+      {/* Model Change Confirmation Modal */}
+      {showModelChangeConfirm && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50"
+          onClick={handleCancelModelChange}
+        >
+          <div
+            className="bg-[var(--color-surface-raised)] border border-[var(--color-border)] rounded-xl w-full max-w-md p-6 shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-[var(--color-text-primary)]">Change Model?</h2>
+              <button
+                onClick={handleCancelModelChange}
+                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)] transition-colors"
+              >
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <p className="text-sm text-[var(--color-text-secondary)] mb-6">
+              Changing the model requires a new session. You will lose the current conversation context. Continue?
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleCancelModelChange}
+                className="flex-1 px-4 py-2.5 rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:border-[var(--color-border-focus)] bg-[var(--color-surface)] transition-all"
+              >
+                No, Keep Current
+              </button>
+              <button
+                onClick={handleConfirmModelChange}
+                className="flex-1 px-4 py-2.5 rounded-lg bg-[var(--color-accent)] hover:bg-[var(--color-accent-hover)] text-white font-medium transition-all"
+                style={{ boxShadow: 'var(--shadow-sm)' }}
+              >
+                Yes, Change Model
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
