@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { Gateway, ChannelStatus, NodeInfo } from '../types';
+import type { Gateway } from '../types';
 import { GatewayClient } from '../gateway';
-import { Activity, Server, MessageSquare, Box, RefreshCw, TrendingUp } from 'lucide-react';
+import { Activity, Server, MessageSquare, Box, RefreshCw } from 'lucide-react';
 
 interface DashboardViewProps {
   gateways: Map<string, Gateway>;

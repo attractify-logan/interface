@@ -408,6 +408,7 @@ export default function ChatView({
   // Get model display names
   const agentModel = activeAgent?.selectedModel || activeGateway?.defaultModel || '';
   const agentFallbackModel = activeAgent?.fallbackModel || '';
+  const isUsingDefaultModel = !activeAgent?.selectedModel && !!activeGateway?.defaultModel;
   const modelShortName = agentModel.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || 'None';
   const fallbackShortName = agentFallbackModel ? agentFallbackModel.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') : 'None';
 
@@ -505,21 +506,22 @@ export default function ChatView({
                     setFallbackDropdownOpen(false);
                   }}
                   className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] transition-colors"
-                  title={`Current model: ${agentModel}`}
+                  title={isUsingDefaultModel ? `Using gateway default: ${agentModel}` : `Current model: ${agentModel}`}
                 >
                   <span className="text-[var(--color-text-muted)] font-medium">Model:</span>
-                  <span className="font-mono text-[var(--color-text-primary)] max-w-[80px] truncate">
+                  <span className={`font-mono max-w-[80px] truncate ${isUsingDefaultModel ? 'text-[var(--color-text-secondary)] italic' : 'text-[var(--color-text-primary)]'}`}>
                     {modelShortName}
                   </span>
                   <ChevronDown size={10} className="text-[var(--color-text-muted)]" />
                 </button>
 
                 {modelDropdownOpen && activeGateway.models.length > 0 && (
-                  <div className="absolute top-full left-0 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg py-1 min-w-full z-50 max-h-60 overflow-y-auto">
+                  <div className="absolute top-full left-0 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg py-1 min-w-[200px] z-50 max-h-60 overflow-y-auto">
                     {activeGateway.models.map(model => {
                       const modelId = model.id;
-                      const displayName = modelId.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || modelId;
+                      const displayName = model.name || modelId.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || modelId;
                       const isSelected = modelId === agentModel;
+                      const isAutoDetected = isSelected && !activeAgent.selectedModel && !!activeGateway?.defaultModel;
                       return (
                         <button
                           key={modelId}
@@ -530,11 +532,14 @@ export default function ChatView({
                           className={`w-full text-left px-2 py-1.5 text-[10px] hover:bg-[var(--color-surface-hover)] transition-colors ${
                             isSelected ? 'text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-secondary)]'
                           }`}
-                          title={model.name || modelId}
+                          title={displayName}
                         >
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="truncate">{model.name || displayName}</span>
-                            {isSelected && <span className="text-[var(--color-accent)]">✓</span>}
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate">{displayName}</span>
+                            <div className="flex items-center gap-1 flex-shrink-0">
+                              {isAutoDetected && <span className="text-[var(--color-text-muted)] text-[9px]">(auto)</span>}
+                              {isSelected && <span className="text-[var(--color-accent)]">✓</span>}
+                            </div>
                           </div>
                         </button>
                       );
