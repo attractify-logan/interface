@@ -198,10 +198,13 @@ export default function App() {
             streaming={gw.streaming}
             loadingHistory={gw.loadingHistory}
             activeGateway={gw.activeGateway}
+            activeAgentId={gw.activeAgentId}
             error={gw.error}
             onSend={gw.sendMessage}
             onAbort={gw.abortRun}
             onDismissError={() => gw.setError(null)}
+            onUpdateAgentModel={gw.updateAgentModel}
+            onToggleAdvancedReasoning={gw.toggleAdvancedReasoning}
           />
         );
       case 'dashboard':
@@ -292,8 +295,6 @@ export default function App() {
           }}
           activeAgentId={gw.activeAgentId}
           onReconnectGateway={gw.reconnectGateway}
-          onUpdateAgentModel={gw.updateAgentModel}
-          onToggleAdvancedReasoning={gw.toggleAdvancedReasoning}
           onSwitchAgent={(gatewayId, agentId) => {
             if (gw.activeGatewayId !== gatewayId) {
               gw.switchGateway(gatewayId);

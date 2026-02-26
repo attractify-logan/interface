@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import type { ChatMessage, Gateway } from '../types';
 import { extractText, stripThinking } from '../hooks/useGateways';
-import { Send, Square, ArrowDown, Copy, Check } from 'lucide-react';
+import { Send, Square, ArrowDown, Copy, Check, ChevronDown, Brain } from 'lucide-react';
 
 interface ChatViewProps {
   messages: ChatMessage[];
@@ -11,10 +11,13 @@ interface ChatViewProps {
   streaming: boolean;
   loadingHistory?: boolean;
   activeGateway: Gateway | null;
+  activeAgentId: string | null;
   error: string | null;
   onSend: (text: string) => void;
   onAbort: () => void;
   onDismissError: () => void;
+  onUpdateAgentModel?: (gatewayId: string, agentId: string, modelId: string, fallbackModelId?: string) => void;
+  onToggleAdvancedReasoning?: (gatewayId: string, agentId: string, enabled: boolean) => void;
 }
 
 // Code block component with header and copy button
@@ -65,7 +68,6 @@ const CodeBlock = memo(function CodeBlock({ children, className, ...props }: any
 // Memoized MessageBubble component
 const MessageBubble = memo(function MessageBubble({
   message,
-  onEdit
 }: {
   message: ChatMessage;
   onEdit?: (text: string) => void;
@@ -127,14 +129,14 @@ const MessageBubble = memo(function MessageBubble({
   if (message.role === 'user') {
     return (
       <div
-        className="py-3 group message-enter"
+        className="py-1.5 group message-enter"
         onMouseEnter={() => { setShowActions(true); setShowTimestamp(true); }}
         onMouseLeave={() => { setShowActions(false); setShowTimestamp(false); }}
       >
         <div className="max-w-5xl mx-auto px-4 relative">
           <div className="flex justify-end">
             <div
-              className="bg-[var(--color-surface-user-msg)] text-[var(--color-text-primary)] rounded-lg px-3 py-2 max-w-[85%] text-sm leading-snug whitespace-pre-wrap border border-[var(--color-border)]"
+              className="bg-[var(--color-surface-user-msg)] text-[var(--color-text-primary)] rounded-lg px-2.5 py-1.5 max-w-[85%] text-sm leading-snug whitespace-pre-wrap border border-[var(--color-border)]"
               style={{ boxShadow: 'var(--shadow-sm)' }}
             >
               {text}
@@ -163,7 +165,7 @@ const MessageBubble = memo(function MessageBubble({
 
   return (
     <div
-      className="py-3 group message-enter"
+      className="py-1.5 group message-enter"
       onMouseEnter={() => { setShowActions(true); setShowTimestamp(true); }}
       onMouseLeave={() => { setShowActions(false); setShowTimestamp(false); }}
     >
@@ -180,7 +182,7 @@ const MessageBubble = memo(function MessageBubble({
             </button>
           </div>
         )}
-        <div className="text-sm leading-relaxed text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-2 prose-headings:mt-4 prose-headings:mb-2 prose-li:my-0.5 prose-pre:my-3 prose-code:text-xs">
+        <div className="text-sm leading-tight text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-1.5 prose-headings:mt-3 prose-headings:mb-1.5 prose-li:my-0.5 prose-pre:my-2 prose-code:text-xs">
           {renderedContent}
         </div>
         {/* Timestamp */}
@@ -295,11 +297,9 @@ const ChatInput = memo(function ChatInput({ connected, streaming, onSend, onAbor
 
 // Empty state with branded clown theme
 const EmptyState = memo(function EmptyState({
-  activeGateway,
   connected,
   onSend
 }: {
-  activeGateway: Gateway | null;
   connected: boolean;
   onSend: (text: string) => void;
 }) {
@@ -344,15 +344,20 @@ export default function ChatView({
   streaming,
   loadingHistory = false,
   activeGateway,
+  activeAgentId,
   error,
   onSend,
   onAbort,
   onDismissError,
+  onUpdateAgentModel,
+  onToggleAdvancedReasoning,
 }: ChatViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const isInitialLoad = useRef(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [fallbackDropdownOpen, setFallbackDropdownOpen] = useState(false);
 
   // Auto-scroll
   useEffect(() => {
@@ -377,6 +382,34 @@ export default function ChatView({
   }, []);
 
   const connected = activeGateway?.connected ?? false;
+
+  // Get active agent
+  const activeAgent = useMemo(() => {
+    if (!activeGateway || !activeAgentId) return null;
+    return activeGateway.agents.find(a => a.id === activeAgentId) || null;
+  }, [activeGateway, activeAgentId]);
+
+  // Calculate context percentage (approximate based on message count)
+  const contextPercentage = useMemo(() => {
+    // Rough estimation: ~200k tokens max context, ~500 tokens per message average
+    const estimatedTokens = messages.length * 500;
+    const maxTokens = 200000;
+    const percentage = Math.min((estimatedTokens / maxTokens) * 100, 100);
+    return percentage;
+  }, [messages.length]);
+
+  // Context bar color based on percentage
+  const contextBarColor = useMemo(() => {
+    if (contextPercentage < 50) return 'rgb(34, 197, 94)'; // green
+    if (contextPercentage < 75) return 'rgb(234, 179, 8)'; // yellow
+    return 'rgb(239, 68, 68)'; // red
+  }, [contextPercentage]);
+
+  // Get model display names
+  const agentModel = activeAgent?.selectedModel || activeGateway?.defaultModel || '';
+  const agentFallbackModel = activeAgent?.fallbackModel || '';
+  const modelShortName = agentModel.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || 'None';
+  const fallbackShortName = agentFallbackModel ? agentFallbackModel.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') : 'None';
 
   // Memoize streaming content
   const streamingContent = useMemo(() => {
@@ -442,6 +475,165 @@ export default function ChatView({
         </div>
       )}
 
+      {/* Top nav bar with model controls and context indicator */}
+      <div className="border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+        <div className="h-12 px-4 flex items-center gap-3">
+          {/* Gateway/Agent info */}
+          <div className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
+            <span className="font-medium text-[var(--color-text-primary)]">
+              {activeGateway?.config.name || 'No gateway'}
+            </span>
+            {activeAgent && (
+              <>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  <span>{activeAgent.emoji || '🤖'}</span>
+                  <span>{activeAgent.name || activeAgent.id}</span>
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Model controls - only show if connected and agent selected */}
+          {connected && activeAgent && activeGateway && onUpdateAgentModel && (
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Primary Model dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setModelDropdownOpen(!modelDropdownOpen);
+                    setFallbackDropdownOpen(false);
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] transition-colors"
+                  title={`Current model: ${agentModel}`}
+                >
+                  <span className="text-[var(--color-text-muted)] font-medium">Model:</span>
+                  <span className="font-mono text-[var(--color-text-primary)] max-w-[80px] truncate">
+                    {modelShortName}
+                  </span>
+                  <ChevronDown size={10} className="text-[var(--color-text-muted)]" />
+                </button>
+
+                {modelDropdownOpen && activeGateway.models.length > 0 && (
+                  <div className="absolute top-full left-0 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg py-1 min-w-full z-50 max-h-60 overflow-y-auto">
+                    {activeGateway.models.map(model => {
+                      const modelId = model.id;
+                      const displayName = modelId.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || modelId;
+                      const isSelected = modelId === agentModel;
+                      return (
+                        <button
+                          key={modelId}
+                          onClick={() => {
+                            onUpdateAgentModel(activeGateway.config.id, activeAgent.id, modelId, agentFallbackModel);
+                            setModelDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-2 py-1.5 text-[10px] hover:bg-[var(--color-surface-hover)] transition-colors ${
+                            isSelected ? 'text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-secondary)]'
+                          }`}
+                          title={model.name || modelId}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="truncate">{model.name || displayName}</span>
+                            {isSelected && <span className="text-[var(--color-accent)]">✓</span>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Fallback Model dropdown */}
+              <div className="relative">
+                <button
+                  onClick={() => {
+                    setFallbackDropdownOpen(!fallbackDropdownOpen);
+                    setModelDropdownOpen(false);
+                  }}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] transition-colors"
+                  title={agentFallbackModel ? `Fallback: ${agentFallbackModel}` : 'No fallback model set'}
+                >
+                  <span className="text-[var(--color-text-muted)] font-medium">Fallback:</span>
+                  <span className="font-mono text-[var(--color-text-secondary)] max-w-[80px] truncate">
+                    {fallbackShortName}
+                  </span>
+                  <ChevronDown size={10} className="text-[var(--color-text-muted)]" />
+                </button>
+
+                {fallbackDropdownOpen && activeGateway.models.length > 0 && (
+                  <div className="absolute top-full left-0 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg py-1 min-w-full z-50 max-h-60 overflow-y-auto">
+                    <button
+                      onClick={() => {
+                        onUpdateAgentModel(activeGateway.config.id, activeAgent.id, agentModel, '');
+                        setFallbackDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-2 py-1.5 text-[10px] hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-muted)] italic"
+                    >
+                      None
+                    </button>
+                    {activeGateway.models.map(model => {
+                      const modelId = model.id;
+                      const displayName = modelId.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || modelId;
+                      const isSelected = modelId === agentFallbackModel;
+                      return (
+                        <button
+                          key={modelId}
+                          onClick={() => {
+                            onUpdateAgentModel(activeGateway.config.id, activeAgent.id, agentModel, modelId);
+                            setFallbackDropdownOpen(false);
+                          }}
+                          className={`w-full text-left px-2 py-1.5 text-[10px] hover:bg-[var(--color-surface-hover)] transition-colors ${
+                            isSelected ? 'text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-secondary)]'
+                          }`}
+                          title={model.name || modelId}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="truncate">{model.name || displayName}</span>
+                            {isSelected && <span className="text-[var(--color-accent)]">✓</span>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Advanced Reasoning toggle */}
+              {onToggleAdvancedReasoning && (
+                <button
+                  onClick={() => {
+                    onToggleAdvancedReasoning(activeGateway.config.id, activeAgent.id, !activeAgent.advancedReasoning);
+                  }}
+                  className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] transition-colors border ${
+                    activeAgent.advancedReasoning
+                      ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]'
+                      : 'bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:bg-[var(--color-surface-hover)]'
+                  }`}
+                  title={activeAgent.advancedReasoning ? 'Advanced reasoning enabled' : 'Advanced reasoning disabled'}
+                >
+                  <Brain size={10} />
+                  <span className="font-medium">Reasoning</span>
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Context usage progress bar */}
+        {contextPercentage > 0 && (
+          <div className="h-0.5 w-full bg-[var(--color-surface-hover)] overflow-hidden">
+            <div
+              className="h-full transition-all duration-300"
+              style={{
+                width: `${contextPercentage}%`,
+                background: `linear-gradient(to right, ${contextBarColor}, ${contextBarColor})`,
+              }}
+              title={`Context usage: ~${Math.round(contextPercentage)}%`}
+            />
+          </div>
+        )}
+      </div>
+
       {/* Messages */}
       <div
         ref={scrollContainerRef}
@@ -451,7 +643,6 @@ export default function ChatView({
         <div className="pb-4">
           {messages.length === 0 && !streaming && !loadingHistory && (
             <EmptyState
-              activeGateway={activeGateway}
               connected={connected}
               onSend={onSend}
             />
@@ -476,9 +667,9 @@ export default function ChatView({
 
           {/* Streaming */}
           {streaming && (
-            <div className="py-3">
+            <div className="py-1.5">
               <div className="max-w-5xl mx-auto px-4">
-                <div className="text-sm leading-relaxed text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-2 prose-headings:mt-4 prose-headings:mb-2 prose-li:my-0.5 prose-pre:my-3 prose-code:text-xs">
+                <div className="text-sm leading-tight text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-1.5 prose-headings:mt-3 prose-headings:mb-1.5 prose-li:my-0.5 prose-pre:my-2 prose-code:text-xs">
                   {streamingContent}
                 </div>
               </div>

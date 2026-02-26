@@ -16,10 +16,7 @@ import {
   Link2,
   Bell,
   BellOff,
-  RefreshCw,
-  ChevronDown,
-  Brain,
-  Info
+  RefreshCw
 } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -48,8 +45,6 @@ interface SidebarProps {
   onDeleteFederatedSession?: (id: string) => void;
   onSwitchAgent?: (gatewayId: string, agentId: string) => void;
   onReconnectGateway?: (config: { id: string; name: string; url: string }) => Promise<void>;
-  onUpdateAgentModel?: (gatewayId: string, agentId: string, modelId: string, fallbackModelId?: string) => void;
-  onToggleAdvancedReasoning?: (gatewayId: string, agentId: string, enabled: boolean) => void;
   activeAgentId?: string | null;
   streaming?: boolean;
   activeProcesses?: Map<string, boolean>;
@@ -108,8 +103,6 @@ export default function Sidebar({
   onDeleteFederatedSession,
   onSwitchAgent,
   onReconnectGateway,
-  onUpdateAgentModel,
-  onToggleAdvancedReasoning,
   activeAgentId,
   streaming = false,
   activeProcesses,
@@ -119,8 +112,6 @@ export default function Sidebar({
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : TerminalIcon;
   const [reconnectingGateways, setReconnectingGateways] = useState<Set<string>>(new Set());
   const [notificationPrefs, setNotificationPrefs] = useState<Record<string, boolean>>({});
-  const [modelDropdownOpen, setModelDropdownOpen] = useState<string | null>(null);
-  const [fallbackDropdownOpen, setFallbackDropdownOpen] = useState<string | null>(null);
 
   const handleNotificationToggle = async (gatewayId: string, agentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -307,10 +298,6 @@ export default function Sidebar({
                     );
                     const notifKey = `${gw.config.id}:${agent.id}`;
                     const notifEnabled = notificationPrefs[notifKey] ?? isNotificationEnabled(gw.config.id, agent.id);
-                    const agentModel = agent.selectedModel || gw.defaultModel || '';
-                    const agentFallbackModel = agent.fallbackModel || '';
-                    const modelShortName = agentModel.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || '';
-                    const dropdownKey = `${gw.config.id}:${agent.id}`;
 
                     return (
                       <div key={agent.id} className="space-y-1">
@@ -349,136 +336,6 @@ export default function Sidebar({
                             ) : (
                               <BellOff size={12} className="text-[var(--color-text-muted)]" />
                             )}
-                          </button>
-                        </div>
-
-                        {/* Model management row */}
-                        <div className="ml-2 space-y-1">
-                          {/* Primary Model selector */}
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setModelDropdownOpen(modelDropdownOpen === dropdownKey ? null : dropdownKey);
-                                setFallbackDropdownOpen(null);
-                              }}
-                              className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-[10px] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] transition-colors"
-                              title={`Current model: ${agentModel}`}
-                            >
-                              <span className="text-[var(--color-text-muted)] font-medium flex-shrink-0">Model:</span>
-                              <span className="font-mono text-[var(--color-text-primary)] truncate flex-1 text-left">
-                                {modelShortName || 'None'}
-                              </span>
-                              <ChevronDown size={10} className="text-[var(--color-text-muted)] flex-shrink-0" />
-                            </button>
-
-                            {/* Model dropdown */}
-                            {modelDropdownOpen === dropdownKey && gw.models.length > 0 && (
-                              <div className="absolute top-full left-0 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg py-1 min-w-full z-50 max-h-40 overflow-y-auto">
-                                {gw.models.map(model => {
-                                  const modelId = model.id;
-                                  const displayName = modelId.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || modelId;
-                                  const isSelected = modelId === agentModel;
-                                  return (
-                                    <button
-                                      key={modelId}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onUpdateAgentModel?.(gw.config.id, agent.id, modelId);
-                                        setModelDropdownOpen(null);
-                                      }}
-                                      className={`w-full text-left px-2 py-1.5 text-[10px] hover:bg-[var(--color-surface-hover)] transition-colors ${
-                                        isSelected ? 'text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-secondary)]'
-                                      }`}
-                                      title={model.name || modelId}
-                                    >
-                                      <div className="flex items-center justify-between gap-1">
-                                        <span className="truncate">{model.name || displayName}</span>
-                                        {isSelected && <span className="text-[var(--color-accent)]">✓</span>}
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Fallback Model selector */}
-                          <div className="relative">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFallbackDropdownOpen(fallbackDropdownOpen === dropdownKey ? null : dropdownKey);
-                                setModelDropdownOpen(null);
-                              }}
-                              className="w-full flex items-center gap-1.5 px-2 py-1 rounded text-[10px] bg-[var(--color-surface-raised)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)] transition-colors"
-                              title={agentFallbackModel ? `Fallback: ${agentFallbackModel}` : 'No fallback model set'}
-                            >
-                              <span className="text-[var(--color-text-muted)] font-medium flex-shrink-0">Fallback:</span>
-                              <span className="font-mono text-[var(--color-text-secondary)] truncate flex-1 text-left">
-                                {agentFallbackModel ? agentFallbackModel.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') : 'None'}
-                              </span>
-                              <ChevronDown size={10} className="text-[var(--color-text-muted)] flex-shrink-0" />
-                            </button>
-
-                            {/* Fallback dropdown */}
-                            {fallbackDropdownOpen === dropdownKey && gw.models.length > 0 && (
-                              <div className="absolute top-full left-0 mt-1 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-lg shadow-lg py-1 min-w-full z-50 max-h-40 overflow-y-auto">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onUpdateAgentModel?.(gw.config.id, agent.id, agentModel, '');
-                                    setFallbackDropdownOpen(null);
-                                  }}
-                                  className="w-full text-left px-2 py-1.5 text-[10px] hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-muted)] italic"
-                                >
-                                  None
-                                </button>
-                                {gw.models.map(model => {
-                                  const modelId = model.id;
-                                  const displayName = modelId.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || modelId;
-                                  const isSelected = modelId === agentFallbackModel;
-                                  return (
-                                    <button
-                                      key={modelId}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onUpdateAgentModel?.(gw.config.id, agent.id, agentModel, modelId);
-                                        setFallbackDropdownOpen(null);
-                                      }}
-                                      className={`w-full text-left px-2 py-1.5 text-[10px] hover:bg-[var(--color-surface-hover)] transition-colors ${
-                                        isSelected ? 'text-[var(--color-accent)] font-medium' : 'text-[var(--color-text-secondary)]'
-                                      }`}
-                                      title={model.name || modelId}
-                                    >
-                                      <div className="flex items-center justify-between gap-1">
-                                        <span className="truncate">{model.name || displayName}</span>
-                                        {isSelected && <span className="text-[var(--color-accent)]">✓</span>}
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Advanced Reasoning toggle */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleAdvancedReasoning?.(gw.config.id, agent.id, !agent.advancedReasoning);
-                            }}
-                            className={`w-full flex items-center gap-1.5 px-2 py-1 rounded text-[10px] transition-colors border ${
-                              agent.advancedReasoning
-                                ? 'bg-[var(--color-accent)] text-white border-[var(--color-accent)]'
-                                : 'bg-[var(--color-surface-raised)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:bg-[var(--color-surface-hover)]'
-                            }`}
-                            title={agent.advancedReasoning ? 'Advanced reasoning enabled' : 'Advanced reasoning disabled'}
-                          >
-                            <Brain size={10} className="flex-shrink-0" />
-                            <span className="flex-1 text-left font-medium">
-                              {agent.advancedReasoning ? 'Reasoning: ON' : 'Reasoning: OFF'}
-                            </span>
                           </button>
                         </div>
 
