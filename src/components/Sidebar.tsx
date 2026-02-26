@@ -16,7 +16,8 @@ import {
   Link2,
   Bell,
   BellOff,
-  RefreshCw
+  RefreshCw,
+  ChevronDown
 } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -112,6 +113,7 @@ export default function Sidebar({
   const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : TerminalIcon;
   const [reconnectingGateways, setReconnectingGateways] = useState<Set<string>>(new Set());
   const [notificationPrefs, setNotificationPrefs] = useState<Record<string, boolean>>({});
+  const [sessionsCollapsed, setSessionsCollapsed] = useState(true);
 
   const handleNotificationToggle = async (gatewayId: string, agentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -484,12 +486,19 @@ export default function Sidebar({
           )}
 
           {/* Standard Sessions */}
-          <div className="flex items-center justify-between px-2 py-1 mb-2">
+          <div
+            className="flex items-center justify-between px-2 py-1 mb-2 cursor-pointer hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors"
+            onClick={() => setSessionsCollapsed(!sessionsCollapsed)}
+          >
             <span className="text-xs text-[var(--color-text-muted)] font-semibold uppercase tracking-wide">
               Sessions
             </span>
+            <ChevronDown
+              size={14}
+              className={`text-[var(--color-text-muted)] transition-transform ${sessionsCollapsed ? '-rotate-90' : ''}`}
+            />
           </div>
-          {sessions.map(s => (
+          {!sessionsCollapsed && sessions.map(s => (
             <div
               key={s.key}
               className={`group relative w-full text-left rounded-lg px-3 py-2 text-sm mb-1 transition-all duration-200 ${
