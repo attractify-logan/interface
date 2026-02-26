@@ -195,6 +195,7 @@ export default function App() {
             messages={gw.messages}
             streamText={gw.streamText}
             streaming={gw.streaming}
+            loadingHistory={gw.loadingHistory}
             activeGateway={gw.activeGateway}
             error={gw.error}
             onSend={gw.sendMessage}

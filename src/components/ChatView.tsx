@@ -9,6 +9,7 @@ interface ChatViewProps {
   messages: ChatMessage[];
   streamText: string;
   streaming: boolean;
+  loadingHistory?: boolean;
   activeGateway: Gateway | null;
   error: string | null;
   onSend: (text: string) => void;
@@ -341,6 +342,7 @@ export default function ChatView({
   messages,
   streamText,
   streaming,
+  loadingHistory = false,
   activeGateway,
   error,
   onSend,
@@ -447,12 +449,18 @@ export default function ChatView({
         className="flex-1 overflow-y-auto"
       >
         <div className="pb-4">
-          {messages.length === 0 && !streaming && (
+          {messages.length === 0 && !streaming && !loadingHistory && (
             <EmptyState
               activeGateway={activeGateway}
               connected={connected}
               onSend={onSend}
             />
+          )}
+
+          {loadingHistory && messages.length === 0 && (
+            <div className="text-center text-[var(--color-text-muted)] mt-32">
+              <div className="text-sm animate-pulse">Loading history...</div>
+            </div>
           )}
 
           {messages.map((msg, i) => (

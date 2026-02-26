@@ -31,6 +31,7 @@ export function useGateways() {
   }, []);
   const [sessions, setSessions] = useState<SessionInfo[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
   const [streamText, setStreamText] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -225,12 +226,14 @@ export function useGateways() {
 
   // Load history from backend (persisted in SQLite)
   const loadHistory = useCallback(
-    async (sessionKey?: string) => {
-      if (!activeGatewayId || !gateways.has(activeGatewayId)) return;
+    async (sessionKey?: string, gwId?: string) => {
+      const gatewayId = gwId || activeGatewayId;
+      if (!gatewayId || !gateways.has(gatewayId)) return;
 
       const key = sessionKey || activeSessionKey;
+      setLoadingHistory(true);
       try {
-        const msgs = await apiGetMessages(activeGatewayId, key);
+        const msgs = await apiGetMessages(gatewayId, key);
         setMessages(
           msgs.map(m => ({
             role: m.role,
@@ -240,7 +243,9 @@ export function useGateways() {
         );
       } catch (err: any) {
         console.error('[loadHistory] Error:', err);
-        setMessages([]);
+        // Don't clear messages on error — keep whatever we had
+      } finally {
+        setLoadingHistory(false);
       }
     },
     [activeGatewayId, activeSessionKey]
@@ -284,20 +289,9 @@ export function useGateways() {
 
       setStreamText('');
       setStreaming(false);
-      setMessages([]);
 
-      // Load history from backend
-      try {
-        const msgs = await apiGetMessages(gwId, activeSessionKey);
-        setMessages(
-          msgs.map(m => ({
-            role: m.role,
-            content: m.content,
-            timestamp: m.timestamp,
-          }))
-        );
-      } catch {
-        // No history yet
+      // Load history from backend (don't clear messages first to avoid flash)
+      await loadHistory(activeSessionKey, gwId);
       }
 
       // Load sessions
@@ -458,26 +452,16 @@ export function useGateways() {
   const switchSession = useCallback(
     async (key: string) => {
       setActiveSessionKey(key);
-      setMessages([]);
       setStreamText('');
       setStreaming(false);
 
       if (activeGatewayId) {
-        try {
-          const msgs = await apiGetMessages(activeGatewayId, key);
-          setMessages(
-            msgs.map(m => ({
-              role: m.role,
-              content: m.content,
-              timestamp: m.timestamp,
-            }))
-          );
-        } catch {
-          // No history yet
-        }
+        await loadHistory(key, activeGatewayId);
+      } else {
+        setMessages([]);
       }
     },
-    [activeGatewayId]
+    [activeGatewayId, loadHistory]
   );
 
   // Create new session
@@ -512,6 +496,7 @@ export function useGateways() {
     removeGateway,
     reconnectGateway,
     connectGateway: reconnectGateway, // Alias for compatibility
+    loadingHistory,
     loadSessions,
     loadHistory,
     setError,
