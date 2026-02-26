@@ -292,7 +292,6 @@ export function useGateways() {
 
       // Load history from backend (don't clear messages first to avoid flash)
       await loadHistory(activeSessionKey, gwId);
-      }
 
       // Load sessions
       try {
@@ -473,6 +472,46 @@ export function useGateways() {
     setStreaming(false);
   }, []);
 
+  // Update agent model
+  const updateAgentModel = useCallback(
+    (gatewayId: string, agentId: string, modelId: string, fallbackModelId?: string) => {
+      setGateways(prev => {
+        const next = new Map(prev);
+        const gw = next.get(gatewayId);
+        if (gw) {
+          const updatedAgents = gw.agents.map(agent =>
+            agent.id === agentId
+              ? { ...agent, selectedModel: modelId, fallbackModel: fallbackModelId }
+              : agent
+          );
+          next.set(gatewayId, { ...gw, agents: updatedAgents });
+        }
+        return next;
+      });
+    },
+    []
+  );
+
+  // Toggle advanced reasoning for agent
+  const toggleAdvancedReasoning = useCallback(
+    (gatewayId: string, agentId: string, enabled: boolean) => {
+      setGateways(prev => {
+        const next = new Map(prev);
+        const gw = next.get(gatewayId);
+        if (gw) {
+          const updatedAgents = gw.agents.map(agent =>
+            agent.id === agentId
+              ? { ...agent, advancedReasoning: enabled }
+              : agent
+          );
+          next.set(gatewayId, { ...gw, agents: updatedAgents });
+        }
+        return next;
+      });
+    },
+    []
+  );
+
   const activeGateway = activeGatewayId ? gateways.get(activeGatewayId) || null : null;
 
   return {
@@ -496,6 +535,8 @@ export function useGateways() {
     removeGateway,
     reconnectGateway,
     connectGateway: reconnectGateway, // Alias for compatibility
+    updateAgentModel,
+    toggleAdvancedReasoning,
     loadingHistory,
     loadSessions,
     loadHistory,
