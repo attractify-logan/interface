@@ -380,7 +380,14 @@ export function useGateways() {
       setError(null);
 
       try {
-        socket.send(activeSessionKey, text.trim());
+        // Get current agent's reasoning setting
+        const currentGateway = activeGatewayId ? gateways.get(activeGatewayId) : null;
+        const currentAgent = currentGateway && activeAgentId
+          ? currentGateway.agents.find(a => a.id === activeAgentId)
+          : null;
+        const advancedReasoning = currentAgent?.advancedReasoning;
+
+        socket.send(activeSessionKey, text.trim(), advancedReasoning);
         // Refresh sessions list after sending
         loadSessions();
       } catch (e: any) {
@@ -391,7 +398,7 @@ export function useGateways() {
         setMessages(prev => prev.slice(0, -1));
       }
     },
-    [getActiveSocket, activeSessionKey, streaming, loadSessions]
+    [getActiveSocket, activeSessionKey, streaming, loadSessions, activeGatewayId, activeAgentId, gateways]
   );
 
   // Abort current run

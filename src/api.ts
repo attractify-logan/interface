@@ -328,15 +328,33 @@ export class ChatSocket {
     }, delay);
   }
 
-  send(sessionKey: string, message: string): void {
+  send(sessionKey: string, message: string, advancedReasoning?: boolean): void {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      throw new Error('WebSocket not connected');
+    }
+
+    const payload: any = {
+      type: 'chat',
+      sessionKey,
+      message,
+    };
+
+    if (advancedReasoning !== undefined) {
+      payload.advancedReasoning = advancedReasoning;
+    }
+
+    this.ws.send(JSON.stringify(payload));
+  }
+
+  setReasoning(sessionKey: string, enabled: boolean): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('WebSocket not connected');
     }
 
     this.ws.send(JSON.stringify({
-      type: 'chat',
+      type: 'set_reasoning',
       sessionKey,
-      message,
+      enabled,
     }));
   }
 

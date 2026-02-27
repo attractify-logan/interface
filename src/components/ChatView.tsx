@@ -424,26 +424,44 @@ export default function ChatView({
   const handleModelChangeRequest = useCallback((modelId: string, fallbackModelId?: string, isFallback: boolean = false) => {
     if (!activeGateway || !activeAgent || !onUpdateAgentModel) return;
 
-    // Check if there are messages (context to lose)
-    if (messages.length > 0) {
+    // Get current model values
+    const currentModel = activeAgent.selectedModel || activeAgent.model || activeGateway?.defaultModel || '';
+    const currentFallback = activeAgent.fallbackModel || '';
+
+    // Determine if we're actually changing the model
+    const modelChanging = isFallback ? (fallbackModelId !== currentFallback) : (modelId !== currentModel);
+
+    // Only show confirmation if there are messages AND the model is actually changing
+    if (messages.length > 0 && modelChanging) {
       setPendingModelChange({ modelId, fallbackModelId, isFallback });
       setShowModelChangeConfirm(true);
     } else {
-      // No messages, just change the model directly
+      // No messages or same model, just update directly
       onUpdateAgentModel(activeGateway.config.id, activeAgent.id, modelId, fallbackModelId);
     }
     setModelDropdownOpen(false);
     setFallbackDropdownOpen(false);
   }, [activeGateway, activeAgent, onUpdateAgentModel, messages.length]);
 
-  // Calculate context percentage (approximate based on message count)
+  // Calculate context percentage (approximate based on character count)
   const contextPercentage = useMemo(() => {
-    // Rough estimation: ~200k tokens max context, ~500 tokens per message average
-    const estimatedTokens = messages.length * 500;
+    // Better estimation: count actual characters in all messages
+    // Rule: 1 token ≈ 4 characters, typical context window is 200k tokens
+    let totalChars = 0;
+    for (const msg of messages) {
+      const text = extractText(msg.content);
+      totalChars += text.length;
+    }
+    // Add streaming text if present
+    if (streamText) {
+      totalChars += streamText.length;
+    }
+
+    const estimatedTokens = totalChars / 4;
     const maxTokens = 200000;
     const percentage = Math.min((estimatedTokens / maxTokens) * 100, 100);
     return percentage;
-  }, [messages.length]);
+  }, [messages, streamText]);
 
   // Context bar color based on percentage
   const contextBarColor = useMemo(() => {
