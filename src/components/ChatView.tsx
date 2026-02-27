@@ -554,20 +554,35 @@ export default function ChatView({
 
   // Calculate context percentage using actual usage data if available, otherwise estimate
   const contextPercentage = useMemo(() => {
-    const maxTokens = activeGateway?.models?.find(m => m.contextWindow)?.contextWindow || 200000;
+    // Try to get max tokens from usage data first (session status), then model info
+    const defaultMaxTokens = activeGateway?.models?.find(m => m.contextWindow)?.contextWindow || 200000;
+    const maxTokens = latestUsage?.max_tokens || defaultMaxTokens;
 
     // Use actual usage data if available
-    if (latestUsage && (latestUsage.input_tokens || latestUsage.output_tokens)) {
-      const totalUsedTokens = (latestUsage.input_tokens || 0) + (latestUsage.output_tokens || 0);
-      const percentage = Math.min((totalUsedTokens / maxTokens) * 100, 100);
-      console.log('[context %] Using actual usage data:', {
-        input: latestUsage.input_tokens,
-        output: latestUsage.output_tokens,
-        total: totalUsedTokens,
-        max: maxTokens,
-        percentage: Math.round(percentage)
-      });
-      return percentage;
+    if (latestUsage) {
+      // Check for context_tokens first (from session status)
+      if (latestUsage.context_tokens !== undefined) {
+        const percentage = Math.min((latestUsage.context_tokens / maxTokens) * 100, 100);
+        console.log('[context %] Using session status data:', {
+          contextTokens: latestUsage.context_tokens,
+          maxTokens: maxTokens,
+          percentage: Math.round(percentage)
+        });
+        return percentage;
+      }
+      // Fall back to input_tokens + output_tokens (from Anthropic usage)
+      else if (latestUsage.input_tokens || latestUsage.output_tokens) {
+        const totalUsedTokens = (latestUsage.input_tokens || 0) + (latestUsage.output_tokens || 0);
+        const percentage = Math.min((totalUsedTokens / maxTokens) * 100, 100);
+        console.log('[context %] Using Anthropic usage data:', {
+          input: latestUsage.input_tokens,
+          output: latestUsage.output_tokens,
+          total: totalUsedTokens,
+          max: maxTokens,
+          percentage: Math.round(percentage)
+        });
+        return percentage;
+      }
     }
 
     // Fallback to heuristic estimation

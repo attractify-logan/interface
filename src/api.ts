@@ -253,6 +253,8 @@ export class ChatSocket {
           this.emit('connected', msg);
         } else if (msg.type === 'stream') {
           this.emit('stream', msg);
+        } else if (msg.type === 'session_status') {
+          this.emit('session_status', msg);
         } else if (msg.type === 'error') {
           this.emit('error', msg);
         }

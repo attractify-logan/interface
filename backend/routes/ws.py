@@ -89,11 +89,17 @@ async def websocket_chat(websocket: WebSocket, gateway_id: str):
     
     # Set up isolated event handler for this WebSocket connection
     chat_events = asyncio.Queue()
+    session_status_events = asyncio.Queue()
 
     async def handle_chat_event(payload):
         await chat_events.put(payload)
 
+    async def handle_session_status_event(payload):
+        # Session status events contain contextTokens/maxTokens
+        await session_status_events.put(payload)
+
     conn.on_event("chat", handle_chat_event)
+    conn.on_event("session.status", handle_session_status_event)
 
     # Set up reconnection notification for this WebSocket
     async def handle_reconnect():
@@ -109,6 +115,27 @@ async def websocket_chat(websocket: WebSocket, gateway_id: str):
 
     conn.on_reconnect(handle_reconnect)
     
+    # Track latest session status for including with final messages
+    latest_session_status = {}
+
+    # Background task to forward session status events
+    async def forward_session_status_events():
+        while True:
+            try:
+                payload = await session_status_events.get()
+                # Store latest status
+                latest_session_status.update(payload)
+                print(f"[session.status] Received: {payload}")
+
+                # Forward to browser
+                await websocket.send_json({
+                    "type": "session_status",
+                    "status": payload
+                })
+            except Exception as e:
+                print(f"Error forwarding session status event: {e}")
+                break
+
     # Background task to forward chat events to browser
     async def forward_chat_events():
         while True:
@@ -144,21 +171,58 @@ async def websocket_chat(websocket: WebSocket, gateway_id: str):
                             cleaned_content.append(block)
 
                     # Forward usage/context info if available
-                    usage = payload.get("usage") or payload.get("context") or {}
+                    # Check multiple possible locations for usage data
+                    usage = None
+
+                    # Try payload.usage first (most likely location)
+                    if "usage" in payload:
+                        usage = payload["usage"]
+                        print(f"[final] Found usage in payload.usage: {usage}")
+                    # Try message.usage
+                    elif "usage" in message:
+                        usage = message["usage"]
+                        print(f"[final] Found usage in message.usage: {usage}")
+                    # Try payload.context (alternative name)
+                    elif "context" in payload:
+                        usage = payload["context"]
+                        print(f"[final] Found usage in payload.context: {usage}")
+                    # Try message.context
+                    elif "context" in message:
+                        usage = message["context"]
+                        print(f"[final] Found usage in message.context: {usage}")
+                    else:
+                        # Debug: show full payload structure (first 500 chars to avoid spam)
+                        payload_str = str(payload)
+                        print(f"[final] NO USAGE FOUND. Payload keys: {list(payload.keys())}")
+                        print(f"[final] Message keys: {list(message.keys())}")
+                        print(f"[final] Payload preview: {payload_str[:500]}")
+
                     final_msg = {
                         "type": "stream",
                         "state": "final",
                         "content": cleaned_content
                     }
+
+                    # Include usage data from chat event if available
                     if usage:
                         final_msg["usage"] = usage
-                    # Also check for context in the message
-                    msg_usage = message.get("usage")
-                    if msg_usage:
-                        final_msg["usage"] = msg_usage
+                    # Also include session status data if we have it (contextTokens/maxTokens)
+                    elif latest_session_status:
+                        # Convert session status format to usage format
+                        ctx_tokens = latest_session_status.get("contextTokens") or latest_session_status.get("context_tokens")
+                        max_tokens = latest_session_status.get("maxTokens") or latest_session_status.get("max_tokens")
 
-                    # Log payload keys for debugging
-                    print(f"[final] payload keys: {list(payload.keys())}, usage: {usage or msg_usage or 'none'}")
+                        if ctx_tokens is not None:
+                            # Map to Anthropic's usage format for compatibility
+                            # Note: contextTokens is total context, not split input/output
+                            # We'll put it all in input_tokens for now
+                            final_msg["usage"] = {
+                                "input_tokens": ctx_tokens,
+                                "output_tokens": 0,  # Not provided separately by session status
+                                "context_tokens": ctx_tokens,  # Include raw value too
+                                "max_tokens": max_tokens
+                            }
+                            print(f"[final] Using session status data: {ctx_tokens}/{max_tokens} tokens")
 
                     await websocket.send_json(final_msg)
                 
@@ -174,7 +238,8 @@ async def websocket_chat(websocket: WebSocket, gateway_id: str):
                 print(f"Error forwarding chat event: {e}")
                 break
     
-    forward_task = asyncio.create_task(forward_chat_events())
+    forward_chat_task = asyncio.create_task(forward_chat_events())
+    forward_status_task = asyncio.create_task(forward_session_status_events())
     
     try:
         while True:
@@ -300,9 +365,11 @@ async def websocket_chat(websocket: WebSocket, gateway_id: str):
         print(f"WebSocket error: {e}")
 
     finally:
-        forward_task.cancel()
+        forward_chat_task.cancel()
+        forward_status_task.cancel()
         # Clean up event handlers for this specific connection
         conn.remove_event_handler("chat", handle_chat_event)
+        conn.remove_event_handler("session.status", handle_session_status_event)
         # Clean up reconnect callback
         try:
             conn.reconnect_callbacks.remove(handle_reconnect)

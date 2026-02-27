@@ -174,6 +174,25 @@ export function useGateways() {
       });
     });
 
+    // Handle session status events (contains contextTokens/maxTokens)
+    socket.on('session_status', (data: any) => {
+      const status = data.status || {};
+      const contextTokens = status.contextTokens || status.context_tokens;
+      const maxTokens = status.maxTokens || status.max_tokens;
+
+      console.log('[session_status] Received:', { contextTokens, maxTokens });
+
+      // Convert to usage format for latestUsage
+      if (contextTokens !== undefined) {
+        setLatestUsage({
+          input_tokens: contextTokens,
+          output_tokens: 0, // Not provided separately
+          context_tokens: contextTokens,
+          max_tokens: maxTokens,
+        });
+      }
+    });
+
     // Handle stream events
     socket.on('stream', (data: any) => {
       const { state, content, text, error: streamError, usage } = data;
