@@ -180,15 +180,30 @@ export function useGateways() {
             // Show notification if enabled for this agent
             const { gateways: currentGateways, activeAgentId: currentAgentId } = getCurrentState();
             const gw = currentGateways.get(gwId);
-            console.log('[notif] gwId:', gwId, 'agentId:', currentAgentId, 'gw:', !!gw, 'prefs check:', currentAgentId ? isNotificationEnabled(gwId, currentAgentId) : 'no agent');
-            if (gw) {
-              // Check notification for the active agent on this gateway
-              const agentId = currentAgentId || gw.agents?.[0]?.id;
-              if (agentId && isNotificationEnabled(gwId, agentId)) {
+
+            if (gw && gw.agents && gw.agents.length > 0) {
+              // Determine which agent sent this message
+              // For now, we use the active agent on this gateway
+              // In the future, we could extract agent ID from the message metadata
+              const agentId = currentAgentId || gw.agents[0]?.id;
+
+              if (agentId) {
                 const agent = gw.agents.find(a => a.id === agentId);
                 const agentName = agent?.name || agent?.id || 'Agent';
-                console.log('[notif] Firing notification for', agentName, 'visible:', document.visibilityState, 'focus:', document.hasFocus());
-                showNotification(agentName, cleaned, gw.config.name);
+
+                // Check if notifications are enabled for this agent
+                const notifEnabled = isNotificationEnabled(gwId, agentId);
+
+                console.log('[notif] Message from gateway:', gwId,
+                           'agent:', agentName,
+                           'notif enabled:', notifEnabled,
+                           'visible:', document.visibilityState,
+                           'focus:', document.hasFocus());
+
+                if (notifEnabled) {
+                  // showNotification will handle checking if tab is focused/visible
+                  showNotification(agentName, cleaned, gw.config.name);
+                }
               }
             }
           }
