@@ -359,13 +359,13 @@ export default function ChatView({
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [fallbackDropdownOpen, setFallbackDropdownOpen] = useState(false);
   const [showModelChangeConfirm, setShowModelChangeConfirm] = useState(false);
-  const [pendingModelChange, setPendingModelChange] = useState<{
+  const [_pendingModelChange, setPendingModelChange] = useState<{
     modelId: string;
     fallbackModelId?: string;
     isFallback: boolean;
   } | null>(null);
-  const [previousModel, setPreviousModel] = useState<string>('');
-  const [previousFallbackModel, setPreviousFallbackModel] = useState<string>('');
+  const [_previousModel, setPreviousModel] = useState<string>('');
+  const [_previousFallbackModel, setPreviousFallbackModel] = useState<string>('');
 
   // Auto-scroll
   useEffect(() => {
@@ -400,7 +400,7 @@ export default function ChatView({
   // Track current models to detect changes
   useEffect(() => {
     if (activeAgent) {
-      const currentModel = activeAgent.selectedModel || activeGateway?.defaultModel || '';
+      const currentModel = activeAgent.selectedModel || activeAgent.model || activeGateway?.defaultModel || '';
       const currentFallback = activeAgent.fallbackModel || '';
       setPreviousModel(currentModel);
       setPreviousFallbackModel(currentFallback);
@@ -453,9 +453,10 @@ export default function ChatView({
   }, [contextPercentage]);
 
   // Get model display names
-  const agentModel = activeAgent?.selectedModel || activeGateway?.defaultModel || '';
+  // Priority: selectedModel (UI override) > agent.model (from gateway) > gateway.defaultModel
+  const agentModel = activeAgent?.selectedModel || activeAgent?.model || activeGateway?.defaultModel || '';
   const agentFallbackModel = activeAgent?.fallbackModel || '';
-  const isUsingDefaultModel = !activeAgent?.selectedModel && !!activeGateway?.defaultModel;
+  const isUsingDefaultModel = !activeAgent?.selectedModel && (!!activeAgent?.model || !!activeGateway?.defaultModel);
   const modelShortName = agentModel.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || 'None';
   const fallbackShortName = agentFallbackModel ? agentFallbackModel.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') : 'None';
 

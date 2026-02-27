@@ -20,7 +20,8 @@ export interface AgentInfo {
   name?: string;
   description?: string;
   emoji?: string;
-  selectedModel?: string; // Per-agent model override
+  model?: string; // Agent's current/default model from gateway
+  selectedModel?: string; // Per-agent model override (UI-only)
   fallbackModel?: string; // Fallback model if primary fails
   advancedReasoning?: boolean; // Enable thinking/reasoning modes
 }
