@@ -104,6 +104,41 @@ html, body, #root {
   font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
 }
 
+/* Amber theme - Fallout Pip-Boy inspired */
+.amber {
+  --color-surface: #1a1a00;
+  --color-surface-raised: #252500;
+  --color-surface-hover: #302f08;
+  --color-surface-input: #1f1f00;
+  --color-surface-user-msg: #2a2805;
+  --color-surface-code-block: #1f1e00;
+  --color-surface-code-header: #252400;
+  --color-border: #4a4400;
+  --color-border-focus: #7a6600;
+  --color-border-input: #5a5200;
+  --color-text-primary: #ffb000;
+  --color-text-secondary: #cc8800;
+  --color-text-muted: #886600;
+  --color-accent: #ff9900;
+  --color-accent-hover: #ffcc00;
+
+  --shadow-sm: 0 1px 3px rgba(255, 153, 0, 0.2);
+  --shadow-md: 0 4px 8px rgba(255, 153, 0, 0.25);
+  --shadow-lg: 0 10px 20px rgba(255, 153, 0, 0.3);
+  --shadow-glow: 0 0 25px rgba(255, 176, 0, 0.4);
+  --gradient-card: linear-gradient(135deg, rgba(255, 153, 0, 0.08) 0%, rgba(255, 153, 0, 0.03) 100%);
+  --gradient-active: linear-gradient(135deg, rgba(255, 153, 0, 0.15) 0%, rgba(255, 153, 0, 0.08) 100%);
+  --status-online: #ff9900;
+  --status-offline: #ff3300;
+  --status-warning: #ffcc00;
+}
+.amber, .amber body, .amber #root {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  text-shadow: 0 0 3px rgba(255, 176, 0, 0.3);
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
@@ -113,6 +148,8 @@ html, body, #root {
 .light ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
 .terminal ::-webkit-scrollbar-thumb { background: #22bb22; }
 .terminal ::-webkit-scrollbar-thumb:hover { background: #33ff33; }
+.amber ::-webkit-scrollbar-thumb { background: #cc8800; box-shadow: 0 0 4px rgba(255, 153, 0, 0.5); }
+.amber ::-webkit-scrollbar-thumb:hover { background: #ff9900; box-shadow: 0 0 6px rgba(255, 153, 0, 0.7); }
 
 /* Prose / Markdown */
 .prose {
@@ -136,6 +173,11 @@ html, body, #root {
   background: var(--color-surface-code-block) !important;
   border-color: var(--color-border);
 }
+.amber .prose pre {
+  background: var(--color-surface-code-block) !important;
+  border-color: var(--color-border);
+  box-shadow: inset 0 0 10px rgba(255, 153, 0, 0.1);
+}
 
 .prose code {
   font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', monospace;
@@ -157,6 +199,11 @@ html, body, #root {
   background: var(--color-surface-raised);
   border-color: var(--color-border);
 }
+.amber .prose p code {
+  background: var(--color-surface-raised);
+  border-color: var(--color-border);
+  box-shadow: 0 0 4px rgba(255, 153, 0, 0.15);
+}
 
 .prose table {
   border-collapse: collapse;
@@ -176,6 +223,9 @@ html, body, #root {
 .terminal .prose th, .terminal .prose td {
   border-color: var(--color-border);
 }
+.amber .prose th, .amber .prose td {
+  border-color: var(--color-border);
+}
 
 .prose th {
   background: #1a1a1e;
@@ -186,6 +236,10 @@ html, body, #root {
 }
 .terminal .prose th {
   background: var(--color-surface-raised);
+}
+.amber .prose th {
+  background: var(--color-surface-raised);
+  text-shadow: 0 0 4px rgba(255, 176, 0, 0.4);
 }
 
 .prose a {
@@ -212,6 +266,10 @@ html, body, #root {
 }
 .terminal .prose hr {
   border-color: var(--color-border);
+}
+.amber .prose hr {
+  border-color: var(--color-border);
+  box-shadow: 0 0 6px rgba(255, 153, 0, 0.3);
 }
 
 /* Selection */
@@ -307,6 +365,42 @@ html, body, #root {
 /* Terminal text glow */
 .terminal .glow-text {
   text-shadow: 0 0 10px rgba(51, 255, 51, 0.5);
+}
+
+/* Amber CRT effects - Pip-Boy style */
+.amber::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    to bottom,
+    rgba(26, 26, 0, 0) 50%,
+    rgba(0, 0, 0, 0.3) 50%
+  );
+  background-size: 100% 3px;
+  pointer-events: none;
+  z-index: 9999;
+  animation: scanline 10s linear infinite;
+}
+
+.amber::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, rgba(255, 153, 0, 0.08) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* Amber text glow */
+.amber .glow-text {
+  text-shadow: 0 0 12px rgba(255, 176, 0, 0.6);
 }
 
 /* Hover lift effect */

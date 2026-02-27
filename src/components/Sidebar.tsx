@@ -49,7 +49,7 @@ interface SidebarProps {
   activeAgentId?: string | null;
   streaming?: boolean;
   activeProcesses?: Map<string, boolean>;
-  theme: 'dark' | 'light' | 'terminal';
+  theme: 'dark' | 'light' | 'terminal' | 'amber';
   onToggleTheme: () => void;
 }
 
@@ -110,7 +110,7 @@ export default function Sidebar({
   theme,
   onToggleTheme,
 }: SidebarProps) {
-  const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : TerminalIcon;
+  const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : theme === 'terminal' ? TerminalIcon : Sun;
   const [reconnectingGateways, setReconnectingGateways] = useState<Set<string>>(new Set());
   const [notificationPrefs, setNotificationPrefs] = useState<Record<string, boolean>>({});
   const [sessionsCollapsed, setSessionsCollapsed] = useState(true);

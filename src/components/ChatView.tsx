@@ -359,13 +359,13 @@ export default function ChatView({
   const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
   const [fallbackDropdownOpen, setFallbackDropdownOpen] = useState(false);
   const [showModelChangeConfirm, setShowModelChangeConfirm] = useState(false);
-  const [pendingModelChange, setPendingModelChange] = useState<{
+  const [_pendingModelChange, setPendingModelChange] = useState<{
     modelId: string;
     fallbackModelId?: string;
     isFallback: boolean;
   } | null>(null);
-  const [previousModel, setPreviousModel] = useState<string>('');
-  const [previousFallbackModel, setPreviousFallbackModel] = useState<string>('');
+  const [_previousModel, setPreviousModel] = useState<string>('');
+  const [_previousFallbackModel, setPreviousFallbackModel] = useState<string>('');
 
   // Auto-scroll
   useEffect(() => {
