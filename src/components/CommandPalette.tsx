@@ -33,7 +33,7 @@ interface PaletteItem {
   sublabel?: string;
   icon?: string;
   badge?: string;
-  data?: any;
+  data?: AggregatedAgent | SessionInfo;
 }
 
 interface SpawnOptions {
@@ -271,8 +271,9 @@ export function CommandPalette({
     } else if (item.type === 'agent') {
       setSelectedAgent(item.data as AggregatedAgent);
       setShowSpawnOptions(true);
-    } else if (item.type === 'session') {
-      onSwitchSession(item.data.key);
+    } else if (item.type === 'session' && item.data) {
+      const sessionData = item.data as SessionInfo;
+      onSwitchSession(sessionData.key);
       onClose();
     }
   };
@@ -662,7 +663,7 @@ export function CommandPalette({
                   }}
                   autoFocus
                 >
-                  {Array.from(gateways.values()).map((gw: any) => (
+                  {Array.from(gateways.values()).map((gw) => (
                     <option key={gw.config.id} value={gw.config.id}>
                       {gw.config.name} {!gw.connected && '(disconnected)'}
                     </option>
@@ -698,7 +699,7 @@ export function CommandPalette({
                         }}
                       >
                         <option value="">Default Agent</option>
-                        {selectedGw.agents.map((agent: any) => (
+                        {selectedGw.agents.map((agent) => (
                           <option key={agent.id} value={agent.id}>
                             {agent.emoji ? `${agent.emoji} ` : ''}{agent.name || agent.id}
                           </option>
