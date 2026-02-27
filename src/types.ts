@@ -29,6 +29,7 @@ export interface AgentInfo {
 export interface ModelInfo {
   id: string;
   name?: string;
+  contextWindow?: number;
 }
 
 export interface AgentIdentity {

@@ -571,6 +571,7 @@ export function useGateways() {
   // Toggle advanced reasoning for agent
   const toggleAdvancedReasoning = useCallback(
     (gatewayId: string, agentId: string, enabled: boolean) => {
+      // Update local state
       setGateways(prev => {
         const next = new Map(prev);
         const gw = next.get(gatewayId);
@@ -584,8 +585,19 @@ export function useGateways() {
         }
         return next;
       });
+
+      // Send WebSocket command to gateway
+      const socket = socketsRef.current.get(gatewayId);
+      if (socket?.connected) {
+        try {
+          socket.setReasoning(activeSessionKey, enabled);
+          console.log(`[toggleAdvancedReasoning] Set reasoning=${enabled} for session ${activeSessionKey}`);
+        } catch (err) {
+          console.error('[toggleAdvancedReasoning] Failed to send setReasoning command:', err);
+        }
+      }
     },
-    []
+    [activeSessionKey]
   );
 
   const activeGateway = activeGatewayId ? gateways.get(activeGatewayId) || null : null;
