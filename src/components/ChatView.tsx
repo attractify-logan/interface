@@ -447,23 +447,27 @@ export default function ChatView({
 
   // Calculate context percentage (approximate based on character count)
   const contextPercentage = useMemo(() => {
-    // Better estimation: count actual characters in all messages
-    // Rule: 1 token ≈ 4 characters, typical context window is 200k tokens
+    // Count characters in all visible messages
     let totalChars = 0;
     for (const msg of messages) {
       const text = extractText(msg.content);
       totalChars += text.length;
     }
-    // Add streaming text if present
     if (streamText) {
       totalChars += streamText.length;
     }
 
-    const estimatedTokens = totalChars / 4;
-    const maxTokens = 200000;
-    const percentage = Math.min((estimatedTokens / maxTokens) * 100, 100);
+    // Visible messages are only a fraction of actual context.
+    // Real context includes: system prompts (~2-5k tokens), workspace files (AGENTS.md,
+    // SOUL.md, USER.md, TOOLS.md, MEMORY.md = ~8-15k tokens), tool calls/results
+    // (often 2-5x the visible message size), and message metadata.
+    // Conservative estimate: actual context ≈ 3-4x visible message content.
+    const visibleTokens = totalChars / 4;
+    const estimatedTotalTokens = visibleTokens * 3.5 + 15000; // base overhead for system/workspace
+    const maxTokens = activeGateway?.models?.find(m => m.contextWindow)?.contextWindow || 200000;
+    const percentage = Math.min((estimatedTotalTokens / maxTokens) * 100, 100);
     return percentage;
-  }, [messages, streamText]);
+  }, [messages, streamText, activeGateway]);
 
   // Context bar color based on percentage
   const contextBarColor = useMemo(() => {
