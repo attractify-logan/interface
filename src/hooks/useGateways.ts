@@ -123,6 +123,7 @@ export function useGateways() {
     const getCurrentState = () => ({
       gateways: gateways,
       activeAgentId: activeAgentId,
+      activeGatewayId: activeGatewayId,
     });
 
     // Handle connected event
@@ -147,13 +148,15 @@ export function useGateways() {
     // Handle stream events
     socket.on('stream', (data: any) => {
       const { state, text, error: streamError } = data;
+      const { activeGatewayId: currentGwId } = getCurrentState();
+      const isActiveGateway = gwId === currentGwId;
 
       if (state === 'delta') {
         // Mark gateway as processing
         setActiveProcesses(prev => new Map(prev).set(gwId, true));
 
-        // Accumulate text during streaming
-        if (text) {
+        // Only update stream text if this is the active gateway
+        if (isActiveGateway && text) {
           setStreamText(text);
         }
       } else if (state === 'final') {
@@ -164,8 +167,8 @@ export function useGateways() {
           return next;
         });
 
-        // Final message - add to history
-        if (text) {
+        // Final message - only add to chat if this is the active gateway
+        if (text && isActiveGateway) {
           const cleaned = stripThinking(text);
           if (cleaned) {
             setMessages(prev => [
