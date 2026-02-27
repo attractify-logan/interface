@@ -207,6 +207,7 @@ export default function App() {
             onDismissError={() => gw.setError(null)}
             onUpdateAgentModel={gw.updateAgentModel}
             onToggleAdvancedReasoning={gw.toggleAdvancedReasoning}
+            sessionModel={gw.sessions.find(s => s.key === gw.activeSessionKey)?.model}
           />
         );
       case 'dashboard':

@@ -18,6 +18,7 @@ interface ChatViewProps {
   onDismissError: () => void;
   onUpdateAgentModel?: (gatewayId: string, agentId: string, modelId: string, fallbackModelId?: string) => void;
   onToggleAdvancedReasoning?: (gatewayId: string, agentId: string, enabled: boolean) => void;
+  sessionModel?: string;
 }
 
 // Code block component with header and copy button
@@ -471,8 +472,9 @@ export default function ChatView({
   }, [contextPercentage]);
 
   // Get model display names
-  // Priority: selectedModel (UI override) > agent.model (from gateway) > gateway.defaultModel
-  const agentModel = activeAgent?.selectedModel || activeAgent?.model || activeGateway?.defaultModel || '';
+  // Priority: selectedModel (UI override) > session.model (from backend) > agent.model (from gateway) > gateway.defaultModel
+  const { sessionModel } = props;
+  const agentModel = activeAgent?.selectedModel || sessionModel || activeAgent?.model || activeGateway?.defaultModel || '';
   const agentFallbackModel = activeAgent?.fallbackModel || '';
   const isUsingDefaultModel = !activeAgent?.selectedModel && (!!activeAgent?.model || !!activeGateway?.defaultModel);
   const modelShortName = agentModel.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || 'None';
