@@ -8,11 +8,26 @@ export interface GatewayConfig {
   password?: string;
 }
 
+// Content block types (Anthropic message format)
+export type ContentBlock =
+  | { type: 'text'; text: string }
+  | { type: 'tool_use'; id: string; name: string; input: any }
+  | { type: 'tool_result'; tool_use_id: string; content: string | any; is_error?: boolean };
+
+// Usage information from the API
+export interface UsageInfo {
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
-  content: Array<{ type: string; text?: string }>;
+  content: ContentBlock[];
   timestamp?: number;
   sessionKey?: string;
+  usage?: UsageInfo;
 }
 
 export interface AgentInfo {

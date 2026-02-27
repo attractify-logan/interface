@@ -36,10 +36,12 @@ export function useGateways() {
   const [messagesBySession, setMessagesBySession] = useState<Map<string, ChatMessage[]>>(new Map());
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [streamText, setStreamText] = useState('');
+  const [streamContent, setStreamContent] = useState<any[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // activeProcesses now keyed by "gwId|sessionKey" to track per-session state
   const [activeProcesses, setActiveProcesses] = useState<Map<string, boolean>>(new Map());
+  const [latestUsage, setLatestUsage] = useState<any>(null);
 
   const socketsRef = useRef<Map<string, ChatSocket>>(new Map());
   const switchingRef = useRef(false); // Track when we're actively switching to prevent duplicate loads
@@ -174,7 +176,7 @@ export function useGateways() {
 
     // Handle stream events
     socket.on('stream', (data: any) => {
-      const { state, text, error: streamError } = data;
+      const { state, content, text, error: streamError, usage } = data;
       const { activeGatewayId: currentGwId, activeSessionKey: currentSessionKey } = getCurrentState();
       const isActiveGateway = gwId === currentGwId;
 
@@ -183,9 +185,21 @@ export function useGateways() {
         const processKey = getSessionKey(gwId, currentSessionKey);
         setActiveProcesses(prev => new Map(prev).set(processKey, true));
 
-        // Only update stream text if this is the active gateway
-        if (isActiveGateway && text) {
-          setStreamText(text);
+        // Only update stream content if this is the active gateway
+        if (isActiveGateway) {
+          if (content) {
+            setStreamContent(content);
+            // Extract text for backwards compatibility
+            const extractedText = content
+              .filter((c: any) => c.type === 'text' && c.text)
+              .map((c: any) => c.text)
+              .join('');
+            setStreamText(extractedText);
+          } else if (text) {
+            // Fallback to text-only mode if backend hasn't been updated
+            setStreamText(text);
+            setStreamContent([{ type: 'text', text }]);
+          }
         }
       } else if (state === 'final') {
         // Clear processing state for this specific session
@@ -196,12 +210,39 @@ export function useGateways() {
           return next;
         });
 
+        // Store usage info if available
+        if (usage) {
+          setLatestUsage(usage);
+        }
+
         // Final message - add to the current session's messages
-        if (text) {
-          const cleaned = stripThinking(text);
-          if (cleaned) {
+        if (content || text) {
+          let finalContent: any[];
+
+          if (content) {
+            // Use full content blocks, stripping thinking from text blocks
+            finalContent = content.map((block: any) => {
+              if (block.type === 'text') {
+                return { ...block, text: stripThinking(block.text || '') };
+              }
+              return block;
+            });
+          } else {
+            // Fallback to text-only mode
+            const cleaned = stripThinking(text || '');
+            finalContent = [{ type: 'text', text: cleaned }];
+          }
+
+          // Filter out empty text blocks
+          finalContent = finalContent.filter((block: any) => {
+            if (block.type === 'text') {
+              return (block.text || '').trim().length > 0;
+            }
+            return true;
+          });
+
+          if (finalContent.length > 0) {
             // Store message in the correct session's message list
-            // Use the session key from the current state to ensure we're adding to the right session
             setMessagesBySession(prev => {
               const next = new Map(prev);
               const key = getSessionKey(gwId, currentSessionKey);
@@ -210,8 +251,9 @@ export function useGateways() {
                 ...sessionMessages,
                 {
                   role: 'assistant',
-                  content: [{ type: 'text', text: cleaned }],
+                  content: finalContent,
                   timestamp: Date.now(),
+                  usage: usage || undefined,
                 },
               ]);
               return next;
@@ -224,8 +266,6 @@ export function useGateways() {
 
               if (gw && gw.agents && gw.agents.length > 0) {
                 // Determine which agent sent this message
-                // For now, we use the active agent on this gateway
-                // In the future, we could extract agent ID from the message metadata
                 const agentId = currentAgentId || gw.agents[0]?.id;
 
                 if (agentId) {
@@ -235,15 +275,21 @@ export function useGateways() {
                   // Check if notifications are enabled for this agent
                   const notifEnabled = isNotificationEnabled(gwId, agentId);
 
+                  // Extract text for notification
+                  const notifText = finalContent
+                    .filter((c: any) => c.type === 'text' && c.text)
+                    .map((c: any) => c.text)
+                    .join('');
+
                   console.log('[notif] Message from gateway:', gwId,
                              'agent:', agentName,
                              'notif enabled:', notifEnabled,
                              'visible:', document.visibilityState,
                              'focus:', document.hasFocus());
 
-                  if (notifEnabled) {
+                  if (notifEnabled && notifText) {
                     // showNotification will handle checking if tab is focused/visible
-                    showNotification(agentName, cleaned, gw.config.name);
+                    showNotification(agentName, notifText, gw.config.name);
                   }
                 }
               }
@@ -251,6 +297,7 @@ export function useGateways() {
           }
         }
         setStreamText('');
+        setStreamContent([]);
         setStreaming(false);
       } else if (state === 'error') {
         // Clear processing state for this specific session
@@ -264,6 +311,7 @@ export function useGateways() {
 
         setError(streamError || 'Stream error');
         setStreamText('');
+        setStreamContent([]);
         setStreaming(false);
       }
     });
@@ -396,6 +444,7 @@ export function useGateways() {
       }
 
       setStreamText('');
+      setStreamContent([]);
       setStreaming(false);
 
       // No need to clear messages - they're scoped per-session
@@ -592,6 +641,7 @@ export function useGateways() {
       // Then update other state
       setActiveSessionKey(key);
       setStreamText('');
+      setStreamContent([]);
       setStreaming(false);
 
       // Use explicit gateway ID if provided (critical when switching gateways + sessions
@@ -615,6 +665,7 @@ export function useGateways() {
     setActiveSessionKey(key);
     // No need to clear messages - new session will have empty message list automatically
     setStreamText('');
+    setStreamContent([]);
     setStreaming(false);
   }, []);
 
@@ -686,9 +737,11 @@ export function useGateways() {
     sessionsByGateway, // Expose full map for components that need all gateway sessions
     messages, // Now returns messages for ONLY the current session (gatewayId + sessionKey)
     streamText,
+    streamContent,
     streaming,
     error,
     activeProcesses,
+    latestUsage,
     setActiveAgentId,
     switchGateway,
     switchSession,

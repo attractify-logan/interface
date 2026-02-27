@@ -41,19 +41,20 @@ export interface BackendSession {
 
 export interface BackendMessage {
   role: 'user' | 'assistant' | 'system';
-  content: Array<{ type: string; text?: string }>;
+  content: any[]; // Full content blocks including tool_use, tool_result
   timestamp?: number;
+  usage?: any; // Usage info from API
 }
 
 // WebSocket message types (simplified protocol from backend)
 export type WSMessage =
   | { type: 'connected'; agents: AgentInfo[]; models: ModelInfo[]; defaultModel?: string }
-  | { type: 'stream'; state: 'delta' | 'final' | 'error'; text?: string; error?: string }
+  | { type: 'stream'; state: 'delta' | 'final' | 'error'; content?: any[]; text?: string; error?: string; usage?: any }
   | { type: 'error'; error: string };
 
 export type FederatedWSMessage =
   | { type: 'connected'; federated: true }
-  | { type: 'stream'; state: 'delta' | 'final' | 'error'; text?: string; error?: string; source: { gateway_id: string; agent_name: string } }
+  | { type: 'stream'; state: 'delta' | 'final' | 'error'; content?: any[]; text?: string; error?: string; usage?: any; source: { gateway_id: string; agent_name: string } }
   | { type: 'reconnected'; gateway_id: string }
   | { type: 'error'; error: string };
 
