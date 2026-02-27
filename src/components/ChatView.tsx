@@ -220,7 +220,12 @@ const MessageBubble = memo(function MessageBubble({
 
   // Memoize the content rendering
   const renderedContent = useMemo(() => {
-    return message.content.map((block, index) => renderContentBlock(block, index));
+    // Normalize content to always be an array
+    const contentArray = Array.isArray(message.content)
+      ? message.content
+      : [{ type: 'text', text: String(message.content) }];
+
+    return contentArray.map((block, index) => renderContentBlock(block, index));
   }, [message.content, renderContentBlock]);
 
   if (message.role === 'user') {
