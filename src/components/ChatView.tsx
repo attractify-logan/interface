@@ -457,13 +457,15 @@ export default function ChatView({
       totalChars += streamText.length;
     }
 
-    // Visible messages are only a fraction of actual context.
-    // Real context includes: system prompts (~2-5k tokens), workspace files (AGENTS.md,
-    // SOUL.md, USER.md, TOOLS.md, MEMORY.md = ~8-15k tokens), tool calls/results
-    // (often 2-5x the visible message size), and message metadata.
-    // Conservative estimate: actual context ≈ 3-4x visible message content.
+    // Visible messages are a small fraction of actual context.
+    // Real context includes: system prompts, workspace files (AGENTS.md, SOUL.md,
+    // USER.md, TOOLS.md, MEMORY.md), tool calls/results (compacted but still large),
+    // cached content, and message metadata. In practice, visible chat text represents
+    // roughly 5-10% of actual context usage.
+    // Base: ~50k tokens for system prompt + workspace files + skill docs
+    // Per message: visible text * ~10x (tool calls, results, metadata, thinking)
     const visibleTokens = totalChars / 4;
-    const estimatedTotalTokens = visibleTokens * 3.5 + 15000; // base overhead for system/workspace
+    const estimatedTotalTokens = visibleTokens * 10 + 50000;
     const maxTokens = activeGateway?.models?.find(m => m.contextWindow)?.contextWindow || 200000;
     const percentage = Math.min((estimatedTotalTokens / maxTokens) * 100, 100);
     return percentage;
