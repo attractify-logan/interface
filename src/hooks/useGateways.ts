@@ -398,6 +398,25 @@ export function useGateways() {
           );
           return next;
         });
+        // Also fetch context % from gateway
+        try {
+          const ctxRes = await fetch(`/api/gateways/${gatewayId}/sessions/${encodeURIComponent(key)}/context`);
+          if (ctxRes.ok) {
+            const ctx = await ctxRes.json();
+            if (ctx.percentage !== null) {
+              setLatestUsage({
+                input_tokens: ctx.contextTokens || 0,
+                output_tokens: 0,
+                context_tokens: ctx.contextTokens,
+                max_tokens: ctx.maxTokens,
+                percent_used: ctx.percentage,
+              });
+              console.log('[loadHistory] Context from gateway:', ctx.percentage + '%');
+            }
+          }
+        } catch (e) {
+          console.warn('[loadHistory] Failed to fetch context:', e);
+        }
       } catch (err: any) {
         console.error('[loadHistory] Error:', err);
         // Don't clear messages on error — keep whatever we had
