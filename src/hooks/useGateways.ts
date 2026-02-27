@@ -400,7 +400,8 @@ export function useGateways() {
         });
         // Also fetch context % from gateway
         try {
-          const ctxRes = await fetch(`/api/gateways/${gatewayId}/sessions/${encodeURIComponent(key)}/context`);
+          const apiBase = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+          const ctxRes = await fetch(`${apiBase}/api/gateways/${gatewayId}/sessions/${encodeURIComponent(key)}/context`);
           if (ctxRes.ok) {
             const ctx = await ctxRes.json();
             if (ctx.percentage !== null) {
