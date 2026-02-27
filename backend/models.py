@@ -96,3 +96,43 @@ class FederatedChatMessage(BaseModel):
     message: str
     targets: Optional[List[FederatedSessionGateway]] = None
     broadcast: bool = False
+
+
+# Device models
+class DeviceCreate(BaseModel):
+    id: str
+    name: str
+    ip: str
+    icon: str
+    enabled: bool = True
+    ssh_user: Optional[str] = None
+    ssh_port: int = 22
+    services: List[str] = []
+
+
+class DeviceResponse(BaseModel):
+    id: str
+    name: str
+    ip: str
+    icon: str
+    enabled: bool
+    ssh_user: Optional[str] = None
+    ssh_port: int
+    services: List[str]
+    created_at: str
+
+
+class ServiceStatus(BaseModel):
+    name: str
+    active: bool
+    error: Optional[str] = None
+
+
+class DeviceStatusResponse(BaseModel):
+    id: str
+    name: str
+    icon: str
+    online: bool
+    services: List[ServiceStatus]
+    last_check: str
+    error: Optional[str] = None

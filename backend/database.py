@@ -27,11 +27,12 @@ async def get_db():
 async def init_db():
     """Initialize database schema"""
     db_path = get_db_path()
-    
+
     # Ensure data directory exists
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
-    
+
     db = await aiosqlite.connect(db_path)
+    db.row_factory = aiosqlite.Row
     
     try:
         # Create gateways table
@@ -98,6 +99,51 @@ async def init_db():
                 PRIMARY KEY (federated_session_id, gateway_id)
             )
         """)
+
+        # Create devices table
+        await db.execute("""
+            CREATE TABLE IF NOT EXISTS devices (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                ip TEXT NOT NULL,
+                icon TEXT NOT NULL,
+                enabled INTEGER DEFAULT 1,
+                ssh_user TEXT,
+                ssh_port INTEGER DEFAULT 22,
+                services TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Seed default devices if table is empty
+        cursor = await db.execute("SELECT COUNT(*) as count FROM devices")
+        row = await cursor.fetchone()
+        if row["count"] == 0:
+            import json
+            await db.execute("""
+                INSERT INTO devices (id, name, ip, icon, ssh_user, ssh_port, services)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                "le-potato",
+                "Le Potato",
+                "192.168.68.55",
+                "🥔",
+                "root",
+                22,
+                json.dumps(["pihole-FTL", "homebridge", "tailscaled", "sponsorblock"])
+            ))
+            await db.execute("""
+                INSERT INTO devices (id, name, ip, icon, ssh_user, ssh_port, services)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (
+                "young-neil",
+                "Young Neil",
+                "192.168.68.66",
+                "🎸",
+                "youngneil",
+                22,
+                json.dumps(["openclaw-gateway", "ollama"])
+            ))
 
         await db.commit()
         print("✅ Database initialized successfully")

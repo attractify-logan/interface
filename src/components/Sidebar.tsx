@@ -18,14 +18,16 @@ import {
   BellOff,
   RefreshCw,
   ChevronDown,
-  Radiation
+  Radiation,
+  Monitor
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   isNotificationEnabled,
   toggleNotification,
   requestNotificationPermission,
 } from '../notificationPrefs';
+import { useDevices } from '../hooks/useDevices';
 
 interface SidebarProps {
   gateways: Map<string, Gateway>;
@@ -116,6 +118,27 @@ const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : theme === 
   const [reconnectingGateways, setReconnectingGateways] = useState<Set<string>>(new Set());
   const [notificationPrefs, setNotificationPrefs] = useState<Record<string, boolean>>({});
   const [sessionsCollapsed, setSessionsCollapsed] = useState(true);
+  const [devicesCollapsed, setDevicesCollapsed] = useState(true);
+  const [expandedDevices, setExpandedDevices] = useState<Set<string>>(new Set());
+  const [showDevices, setShowDevices] = useState(false);
+  const { devices } = useDevices();
+
+  useEffect(() => {
+    const updateShowDevices = () => {
+      const enabled = localStorage.getItem('openclaw-chat-infra-monitor') === 'true';
+      setShowDevices(enabled);
+    };
+
+    updateShowDevices();
+
+    // Listen for changes from SettingsModal (same tab) and other tabs
+    window.addEventListener('infra-monitor-changed', updateShowDevices);
+    window.addEventListener('storage', updateShowDevices);
+    return () => {
+      window.removeEventListener('infra-monitor-changed', updateShowDevices);
+      window.removeEventListener('storage', updateShowDevices);
+    };
+  }, []);
 
   const handleNotificationToggle = async (gatewayId: string, agentId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -398,6 +421,85 @@ const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : theme === 
           Add Gateway
         </button>
       </div>
+
+      {/* Devices */}
+      {showDevices && (
+        <div className="p-3 border-b border-[var(--color-border)]">
+          <div
+            className="flex items-center justify-between px-2 py-1 mb-2 cursor-pointer hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors"
+            onClick={() => setDevicesCollapsed(!devicesCollapsed)}
+          >
+            <div className="flex items-center gap-2">
+              <Monitor size={12} className="text-[var(--color-text-muted)]" />
+              <span className="text-xs text-[var(--color-text-muted)] font-semibold uppercase tracking-wide">
+                Devices
+              </span>
+            </div>
+            <ChevronDown
+              size={14}
+              className={`text-[var(--color-text-muted)] transition-transform ${devicesCollapsed ? '-rotate-90' : ''}`}
+            />
+          </div>
+          {!devicesCollapsed && devices.map(device => {
+            const isExpanded = expandedDevices.has(device.id);
+            const allServicesActive = device.services.every(s => s.active);
+            const someServicesActive = device.services.some(s => s.active);
+            const statusColor = !device.online
+              ? 'var(--status-offline)'
+              : allServicesActive
+              ? 'var(--status-online)'
+              : someServicesActive
+              ? 'orange'
+              : 'var(--status-offline)';
+
+            return (
+              <div key={device.id} className="mb-1">
+                <button
+                  onClick={() => {
+                    setExpandedDevices(prev => {
+                      const next = new Set(prev);
+                      if (next.has(device.id)) {
+                        next.delete(device.id);
+                      } else {
+                        next.add(device.id);
+                      }
+                      return next;
+                    });
+                  }}
+                  className="w-full text-left px-3 py-2 rounded-lg text-xs transition-all duration-200 flex items-center gap-2 hover:bg-[var(--color-surface-hover)]"
+                >
+                  <span className="text-sm">{device.icon}</span>
+                  <span className="flex-1 truncate text-[var(--color-text-secondary)]">{device.name}</span>
+                  <span
+                    className="w-2 h-2 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: statusColor }}
+                    title={device.online ? 'Online' : 'Offline'}
+                  />
+                </button>
+                {isExpanded && device.services.length > 0 && (
+                  <div className="ml-6 mt-1 space-y-0.5 border-l-2 border-[var(--color-border)] pl-2">
+                    {device.services.map(service => (
+                      <div
+                        key={service.name}
+                        className="flex items-center gap-2 px-2 py-1 text-[10px] text-[var(--color-text-muted)]"
+                        title={service.error || (service.active ? 'Active' : 'Inactive')}
+                      >
+                        <span
+                          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+                          style={{
+                            backgroundColor: service.active ? 'var(--status-online)' : 'var(--status-offline)'
+                          }}
+                        />
+                        <span className="truncate">{service.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Navigation */}
       <div className="p-3 border-b border-[var(--color-border)]">

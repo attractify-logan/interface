@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import type { Gateway } from '../types';
-import { scanForGateways, type DiscoveredGateway } from '../api';
+import type { Gateway, DeviceConfig } from '../types';
+import { scanForGateways, type DiscoveredGateway, listDevices, addDevice, updateDevice, deleteDevice } from '../api';
 
 interface SettingsModalProps {
   gateways: Map<string, Gateway>;
@@ -31,6 +31,133 @@ export default function SettingsModal({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
   const [discoveredGateways, setDiscoveredGateways] = useState<DiscoveredGateway[]>([]);
+
+  // Infrastructure Monitor state
+  const [infraMonitorEnabled, setInfraMonitorEnabled] = useState(false);
+  const [devices, setDevices] = useState<DeviceConfig[]>([]);
+  const [editingDeviceId, setEditingDeviceId] = useState<string | null>(null);
+  const [deviceForm, setDeviceForm] = useState({
+    id: '',
+    name: '',
+    ip: '',
+    icon: '🖥️',
+    enabled: true,
+    ssh_user: '',
+    ssh_port: 22,
+    services: [] as string[],
+  });
+  const [serviceInput, setServiceInput] = useState('');
+
+  useEffect(() => {
+    const enabled = localStorage.getItem('openclaw-chat-infra-monitor') === 'true';
+    setInfraMonitorEnabled(enabled);
+    if (enabled) {
+      loadDevices();
+    }
+  }, []);
+
+  const loadDevices = async () => {
+    try {
+      const deviceList = await listDevices();
+      setDevices(deviceList);
+    } catch (err) {
+      console.error('Failed to load devices:', err);
+    }
+  };
+
+  const handleInfraMonitorToggle = () => {
+    const newValue = !infraMonitorEnabled;
+    setInfraMonitorEnabled(newValue);
+    localStorage.setItem('openclaw-chat-infra-monitor', newValue.toString());
+    if (newValue) {
+      loadDevices();
+    }
+    // Trigger a re-render of Sidebar
+    window.dispatchEvent(new CustomEvent('infra-monitor-changed'));
+  };
+
+  const handleDeviceEdit = (device: DeviceConfig) => {
+    setEditingDeviceId(device.id);
+    setDeviceForm({
+      id: device.id,
+      name: device.name,
+      ip: device.ip,
+      icon: device.icon,
+      enabled: device.enabled,
+      ssh_user: device.ssh_user || '',
+      ssh_port: device.ssh_port,
+      services: device.services,
+    });
+  };
+
+  const handleDeviceSave = async () => {
+    try {
+      if (editingDeviceId) {
+        await updateDevice(editingDeviceId, {
+          id: deviceForm.id,
+          name: deviceForm.name,
+          ip: deviceForm.ip,
+          icon: deviceForm.icon,
+          enabled: deviceForm.enabled,
+          ssh_user: deviceForm.ssh_user || undefined,
+          ssh_port: deviceForm.ssh_port,
+          services: deviceForm.services,
+        });
+      } else {
+        await addDevice({
+          id: deviceForm.id,
+          name: deviceForm.name,
+          ip: deviceForm.ip,
+          icon: deviceForm.icon,
+          enabled: deviceForm.enabled,
+          ssh_user: deviceForm.ssh_user || undefined,
+          ssh_port: deviceForm.ssh_port,
+          services: deviceForm.services,
+        });
+      }
+      await loadDevices();
+      setEditingDeviceId(null);
+      setDeviceForm({
+        id: '',
+        name: '',
+        ip: '',
+        icon: '🖥️',
+        enabled: true,
+        ssh_user: '',
+        ssh_port: 22,
+        services: [],
+      });
+    } catch (err: any) {
+      setConnectError(err.message || 'Failed to save device');
+    }
+  };
+
+  const handleDeviceDelete = async (id: string) => {
+    if (!confirm('Delete this device?')) return;
+    try {
+      await deleteDevice(id);
+      await loadDevices();
+    } catch (err: any) {
+      setConnectError(err.message || 'Failed to delete device');
+    }
+  };
+
+  const handleAddService = () => {
+    if (serviceInput.trim()) {
+      setDeviceForm({
+        ...deviceForm,
+        services: [...deviceForm.services, serviceInput.trim()],
+      });
+      setServiceInput('');
+    }
+  };
+
+  const handleRemoveService = (index: number) => {
+    setDeviceForm({
+      ...deviceForm,
+      services: deviceForm.services.filter((_, i) => i !== index),
+    });
+  };
 
   // Auto-select gateway if preSelectedGatewayId is provided
   useEffect(() => {
@@ -132,7 +259,7 @@ export default function SettingsModal({
       onClick={handleBackdropClick}
     >
       <div
-        className="bg-surface-raised border border-border rounded-xl w-full max-w-lg p-6 shadow-2xl"
+        className="bg-surface-raised border border-border rounded-xl w-full max-w-lg p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={e => e.stopPropagation()}
         onKeyDown={handleKeyDown}
       >
@@ -366,6 +493,180 @@ export default function SettingsModal({
               {connecting ? 'Connecting...' : editingId ? 'Save' : 'Connect'}
             </button>
           </div>
+        </div>
+
+        {/* Infrastructure Monitor */}
+        <div className="mt-5 border-t border-border pt-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-medium">Infrastructure Monitor</div>
+            <button
+              onClick={handleInfraMonitorToggle}
+              className={`relative w-12 h-6 rounded-full transition-colors ${
+                infraMonitorEnabled ? 'bg-accent' : 'bg-surface-hover'
+              }`}
+            >
+              <span
+                className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${
+                  infraMonitorEnabled ? 'translate-x-6' : ''
+                }`}
+              />
+            </button>
+          </div>
+
+          {infraMonitorEnabled && (
+            <>
+              {/* Device List */}
+              {devices.length > 0 && (
+                <div className="mb-3 space-y-2">
+                  {devices.map((device) => (
+                    <div
+                      key={device.id}
+                      className="flex items-center justify-between p-2 bg-surface border border-border rounded-lg"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-lg">{device.icon}</span>
+                        <div className="min-w-0">
+                          <div className="text-xs font-medium">{device.name}</div>
+                          <div className="text-xs text-text-muted truncate">{device.ip}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleDeviceEdit(device)}
+                          className="text-xs text-accent hover:text-accent-hover transition-colors"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeviceDelete(device.id)}
+                          className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add/Edit Device Form */}
+              <div className="space-y-2">
+                <div className="text-xs font-medium text-text-muted mb-2">
+                  {editingDeviceId ? 'Edit Device' : 'Add Device'}
+                </div>
+                <input
+                  type="text"
+                  placeholder="ID (e.g. young-neil)"
+                  value={deviceForm.id}
+                  onChange={e => setDeviceForm({ ...deviceForm, id: e.target.value })}
+                  disabled={!!editingDeviceId}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-border-focus disabled:opacity-50"
+                />
+                <input
+                  type="text"
+                  placeholder="Name (e.g. Young Neil)"
+                  value={deviceForm.name}
+                  onChange={e => setDeviceForm({ ...deviceForm, name: e.target.value })}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-border-focus"
+                />
+                <input
+                  type="text"
+                  placeholder="IP Address (e.g. 192.168.68.66)"
+                  value={deviceForm.ip}
+                  onChange={e => setDeviceForm({ ...deviceForm, ip: e.target.value })}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-border-focus"
+                />
+                <input
+                  type="text"
+                  placeholder="Icon (emoji)"
+                  value={deviceForm.icon}
+                  onChange={e => setDeviceForm({ ...deviceForm, icon: e.target.value })}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-border-focus"
+                />
+                <input
+                  type="text"
+                  placeholder="SSH User (optional)"
+                  value={deviceForm.ssh_user}
+                  onChange={e => setDeviceForm({ ...deviceForm, ssh_user: e.target.value })}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-border-focus"
+                />
+                <input
+                  type="number"
+                  placeholder="SSH Port (default: 22)"
+                  value={deviceForm.ssh_port}
+                  onChange={e => setDeviceForm({ ...deviceForm, ssh_port: parseInt(e.target.value) || 22 })}
+                  className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-border-focus"
+                />
+
+                {/* Services */}
+                <div className="text-xs font-medium text-text-muted mt-2">Services to Monitor</div>
+                {deviceForm.services.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {deviceForm.services.map((service, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center gap-1 bg-surface-hover text-text-secondary text-xs px-2 py-1 rounded"
+                      >
+                        {service}
+                        <button
+                          onClick={() => handleRemoveService(index)}
+                          className="text-text-muted hover:text-red-400"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Service name (e.g. ollama)"
+                    value={serviceInput}
+                    onChange={e => setServiceInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddService()}
+                    className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-border-focus"
+                  />
+                  <button
+                    onClick={handleAddService}
+                    className="bg-surface-hover hover:bg-surface text-text-secondary rounded-lg px-3 py-2 text-xs font-medium transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
+
+                <div className="flex gap-2 mt-3">
+                  {editingDeviceId && (
+                    <button
+                      onClick={() => {
+                        setEditingDeviceId(null);
+                        setDeviceForm({
+                          id: '',
+                          name: '',
+                          ip: '',
+                          icon: '🖥️',
+                          enabled: true,
+                          ssh_user: '',
+                          ssh_port: 22,
+                          services: [],
+                        });
+                      }}
+                      className="flex-1 bg-surface-hover hover:bg-surface text-text-secondary rounded-lg py-2.5 text-sm font-medium transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    onClick={handleDeviceSave}
+                    disabled={!deviceForm.id || !deviceForm.name || !deviceForm.ip}
+                    className="flex-1 bg-accent hover:bg-accent-hover text-surface rounded-lg py-2.5 text-sm font-medium disabled:opacity-50 transition-colors"
+                  >
+                    {editingDeviceId ? 'Save' : 'Add Device'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

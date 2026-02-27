@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from database import init_db, get_db
 from gateway_manager import gateway_manager
 from config import settings
-from routes import gateways, sessions, messages, ws, federated
+from routes import gateways, sessions, messages, ws, federated, devices
 
 
 @asynccontextmanager
@@ -31,9 +31,12 @@ async def lifespan(app: FastAPI):
             )
     finally:
         await db.close()
-    
+
+    # Start device polling
+    devices.start_poller()
+
     print("✅ Backend ready")
-    
+
     yield
     
     # Shutdown
@@ -62,6 +65,7 @@ app.include_router(gateways.router)
 app.include_router(sessions.router)
 app.include_router(messages.router)
 app.include_router(federated.router)
+app.include_router(devices.router)
 app.include_router(ws.router)
 
 

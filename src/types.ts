@@ -120,3 +120,31 @@ export interface FederatedChatMessage extends ChatMessage {
     agent_name: string;
   };
 }
+
+export interface DeviceConfig {
+  id: string;
+  name: string;
+  ip: string;
+  icon: string;
+  enabled: boolean;
+  ssh_user?: string;
+  ssh_port: number;
+  services: string[];
+  created_at: string;
+}
+
+export interface ServiceStatus {
+  name: string;
+  active: boolean;
+  error?: string;
+}
+
+export interface DeviceStatus {
+  id: string;
+  name: string;
+  icon: string;
+  online: boolean;
+  services: ServiceStatus[];
+  last_check: string;
+  error?: string;
+}

@@ -1,6 +1,6 @@
 // Backend API client for OpenClaw Chat
 
-import type { AgentInfo, ModelInfo, FederatedSession, FederatedSessionGateway } from './types';
+import type { AgentInfo, ModelInfo, FederatedSession, FederatedSessionGateway, DeviceConfig, DeviceStatus } from './types';
 
 // Configurable backend URLs
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
@@ -618,4 +618,53 @@ export class FederatedChatSocket {
   get connected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
   }
+}
+
+// ============================================================================
+// Devices API
+// ============================================================================
+
+export async function listDevices(): Promise<DeviceConfig[]> {
+  const res = await fetch(`${API_BASE}/api/devices`);
+  if (!res.ok) throw new Error(`Failed to list devices: ${res.statusText}`);
+  return res.json();
+}
+
+export async function addDevice(device: Omit<DeviceConfig, 'created_at'>): Promise<DeviceConfig> {
+  const res = await fetch(`${API_BASE}/api/devices`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(device),
+  });
+  if (!res.ok) throw new Error(`Failed to add device: ${res.statusText}`);
+  return res.json();
+}
+
+export async function updateDevice(id: string, device: Omit<DeviceConfig, 'created_at'>): Promise<DeviceConfig> {
+  const res = await fetch(`${API_BASE}/api/devices/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(device),
+  });
+  if (!res.ok) throw new Error(`Failed to update device: ${res.statusText}`);
+  return res.json();
+}
+
+export async function deleteDevice(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/api/devices/${id}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error(`Failed to delete device: ${res.statusText}`);
+}
+
+export async function getDeviceStatuses(): Promise<DeviceStatus[]> {
+  const res = await fetch(`${API_BASE}/api/devices/status`);
+  if (!res.ok) throw new Error(`Failed to get device statuses: ${res.statusText}`);
+  return res.json();
+}
+
+export async function getDeviceStatus(id: string): Promise<DeviceStatus> {
+  const res = await fetch(`${API_BASE}/api/devices/${id}/status`);
+  if (!res.ok) throw new Error(`Failed to get device status: ${res.statusText}`);
+  return res.json();
 }
