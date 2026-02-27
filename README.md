@@ -1,5 +1,7 @@
 # Interface
 
+## Pre Release WIP
+
 A multi-gateway chat application for OpenClaw AI agents with federated conversations and real-time collaboration.
 
 ![Interface Main View](screenshots/main-view.jpg)
