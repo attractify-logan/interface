@@ -57,9 +57,10 @@ export default function App() {
 
   // Theme
   useEffect(() => {
-    document.documentElement.classList.remove('light', 'terminal');
+    document.documentElement.classList.remove('light', 'terminal', 'amber');
     if (theme === 'light') document.documentElement.classList.add('light');
     if (theme === 'terminal') document.documentElement.classList.add('terminal');
+    if (theme === 'amber') document.documentElement.classList.add('amber');
     saveTheme(theme);
   }, [theme]);
 
