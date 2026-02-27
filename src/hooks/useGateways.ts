@@ -29,7 +29,8 @@ export function useGateways() {
     setActiveSessionKeyRaw(key);
     saveActiveSession(key);
   }, []);
-  const [sessions, setSessions] = useState<SessionInfo[]>([]);
+  // Store sessions per-gateway to prevent crosstalk between gateways
+  const [sessionsByGateway, setSessionsByGateway] = useState<Map<string, SessionInfo[]>>(new Map());
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [streamText, setStreamText] = useState('');
@@ -293,7 +294,7 @@ export function useGateways() {
     [activeGatewayId, activeSessionKey, gateways]
   );
 
-  // Load sessions from backend
+  // Load sessions from backend for a specific gateway
   const loadSessions = useCallback(async () => {
     if (!activeGatewayId) {
       console.log('[loadSessions] No active gateway');
@@ -302,11 +303,11 @@ export function useGateways() {
 
     try {
       const sessions = await apiListSessions(activeGatewayId);
-      console.log('[loadSessions] Loaded sessions:', sessions);
-      setSessions(sessions);
+      console.log(`[loadSessions] Loaded ${sessions.length} sessions for gateway ${activeGatewayId}`);
+      setSessionsByGateway(prev => new Map(prev).set(activeGatewayId, sessions));
     } catch (err: any) {
       console.error('[loadSessions] Error:', err);
-      setSessions([]);
+      setSessionsByGateway(prev => new Map(prev).set(activeGatewayId, []));
     }
   }, [activeGatewayId]);
 
@@ -346,9 +347,9 @@ export function useGateways() {
       // Load sessions for the new gateway
       try {
         const sessions = await apiListSessions(gwId);
-        setSessions(sessions);
+        setSessionsByGateway(prev => new Map(prev).set(gwId, sessions));
       } catch {
-        setSessions([]);
+        setSessionsByGateway(prev => new Map(prev).set(gwId, []));
       }
 
       // Clear switching flag so the useEffect can fire with the updated state.
@@ -601,6 +602,8 @@ export function useGateways() {
   );
 
   const activeGateway = activeGatewayId ? gateways.get(activeGatewayId) || null : null;
+  // Get sessions for the active gateway
+  const sessions = activeGatewayId ? sessionsByGateway.get(activeGatewayId) || [] : [];
 
   return {
     gateways,
@@ -608,7 +611,8 @@ export function useGateways() {
     activeGatewayId,
     activeAgentId,
     activeSessionKey,
-    sessions,
+    sessions, // Now returns sessions for ONLY the active gateway
+    sessionsByGateway, // Expose full map for components that need all gateway sessions
     messages,
     streamText,
     streaming,

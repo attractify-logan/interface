@@ -35,11 +35,14 @@ export default function App() {
   const [showFederatedSetup, setShowFederatedSetup] = useState(false);
   const [selectedGateways, setSelectedGateways] = useState<Set<string>>(new Set());
 
+  // Flatten all sessions from all gateways for agent spawn counting
+  const allSessions = Array.from(gw.sessionsByGateway.values()).flat();
+
   // Agent spawn hook
   const { aggregatedAgents, spawnAgent } = useAgentSpawn(
     gw.gateways,
     gw.getClient,
-    gw.sessions,
+    allSessions, // Pass all sessions across all gateways for accurate counting
     gw.switchSession,
     gw.switchGateway
   );
