@@ -143,11 +143,24 @@ async def websocket_chat(websocket: WebSocket, gateway_id: str):
                     # Strip thinking tags
                     text = conn.strip_thinking_tags(text)
                     
-                    await websocket.send_json({
+                    # Forward usage/context info if available
+                    usage = payload.get("usage") or payload.get("context") or {}
+                    final_msg = {
                         "type": "stream",
                         "state": "final",
                         "text": text
-                    })
+                    }
+                    if usage:
+                        final_msg["usage"] = usage
+                    # Also check for context in the message
+                    msg_usage = payload.get("message", {}).get("usage")
+                    if msg_usage:
+                        final_msg["usage"] = msg_usage
+                    
+                    # Log payload keys for debugging
+                    print(f"[final] payload keys: {list(payload.keys())}")
+                    
+                    await websocket.send_json(final_msg)
                 
                 elif state == "error":
                     error_msg = payload.get("error", "Unknown error")

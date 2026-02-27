@@ -173,3 +173,39 @@ async def delete_session(gateway_id: str, session_key: str):
         return {"ok": True}
     finally:
         await db.close()
+
+
+@router.get("/{session_key}/context")
+async def get_session_context(gateway_id: str, session_key: str):
+    """Get session context usage by querying the gateway RPC"""
+    gm = _get_gateway_manager()
+    conn = gm.get_connection(gateway_id)
+    if not conn or not conn.connected:
+        raise HTTPException(status_code=404, detail="Gateway not connected")
+    
+    # Try RPC methods the gateway might support
+    for method in ["session_status", "sessions.status", "status"]:
+        result = await conn.request(method, {"sessionKey": session_key})
+        if result and result.get("ok"):
+            data = result.get("result", result)
+            ctx = data.get("contextTokens") or data.get("context_tokens") or data.get("context", {}).get("used")
+            mx = data.get("maxTokens") or data.get("max_tokens") or data.get("context", {}).get("max")
+            pct = data.get("contextPercentage") or data.get("context_percentage")
+            if ctx or mx or pct:
+                if ctx and mx and not pct:
+                    pct = round((ctx / mx) * 100, 1)
+                return {"contextTokens": ctx, "maxTokens": mx, "percentage": pct}
+    
+    # Fallback: try list_sessions which includes token info
+    result = await conn.request("list_sessions", {})
+    if result and result.get("ok"):
+        sessions = result.get("result", result)
+        if isinstance(sessions, list):
+            for s in sessions:
+                if s.get("key") == session_key or s.get("sessionKey") == session_key:
+                    ctx = s.get("contextTokens") or s.get("context_tokens") or s.get("tokens")
+                    mx = s.get("maxTokens") or s.get("max_tokens") or s.get("contextWindow")
+                    if ctx and mx:
+                        return {"contextTokens": ctx, "maxTokens": mx, "percentage": round((ctx / mx) * 100, 1)}
+
+    return {"contextTokens": None, "maxTokens": None, "percentage": None}
