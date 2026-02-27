@@ -462,6 +462,7 @@ export default function ChatView({
     // Hidden context includes: system prompts (~20k), workspace files (~30k),
     // tool calls/results, thinking blocks, and compacted history.
     // Empirical: ~6k tokens per message pair + ~50k base overhead.
+    if (messages.length === 0) return 0;
     const messagePairs = Math.ceil(messages.length / 2); // user+assistant = 1 pair
     const estimatedTotalTokens = messagePairs * 6000 + 50000;
     const maxTokens = activeGateway?.models?.find(m => m.contextWindow)?.contextWindow || 200000;
