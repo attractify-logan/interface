@@ -305,10 +305,10 @@ export default function App() {
               s => s.key === `agent:${agentId}:${agentId}` || s.key === `agent:${agentId}:main`
             );
             if (existingSession) {
-              gw.switchSession(existingSession.key);
+              gw.switchSession(existingSession.key, gatewayId);
             } else {
               const key = `webchat-${agentId}-${Date.now()}`;
-              gw.switchSession(key);
+              gw.switchSession(key, gatewayId);
             }
             setActiveTab('chat');
           }}

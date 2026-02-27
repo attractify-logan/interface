@@ -322,8 +322,7 @@ export function useGateways() {
       setStreamText('');
       setStreaming(false);
 
-      // CRITICAL: Clear messages immediately to prevent stale messages from previous gateway
-      // The caller (onSwitchAgent or useEffect) will load the correct history
+      // Clear stale messages immediately
       setMessages([]);
 
       // Load sessions for the new gateway
@@ -334,8 +333,9 @@ export function useGateways() {
         setSessions([]);
       }
 
-      // Clear loading and switching flags
-      setLoadingHistory(false);
+      // Clear switching flag so the useEffect can fire with the updated state.
+      // The useEffect watches activeGatewayId + activeSessionKey and will call
+      // loadHistory with the correct values after React processes the state updates.
       switchingRef.current = false;
     },
     [gateways]
@@ -486,7 +486,7 @@ export function useGateways() {
 
   // Switch session
   const switchSession = useCallback(
-    async (key: string) => {
+    async (key: string, explicitGatewayId?: string) => {
       // CRITICAL: Set switching flag to prevent useEffect from loading history
       switchingRef.current = true;
 
@@ -498,8 +498,11 @@ export function useGateways() {
       setStreamText('');
       setStreaming(false);
 
-      if (activeGatewayId) {
-        await loadHistory(key, activeGatewayId);
+      // Use explicit gateway ID if provided (critical when switching gateways + sessions
+      // in the same handler — React hasn't re-rendered yet so activeGatewayId is stale)
+      const gwId = explicitGatewayId || activeGatewayId;
+      if (gwId) {
+        await loadHistory(key, gwId);
       } else {
         setMessages([]);
         setLoadingHistory(false);
