@@ -35,8 +35,8 @@ const CodeBlock = memo(function CodeBlock({ children, className, ...props }: any
   }, [children]);
 
   return (
-    <div className="bg-[var(--color-surface-code-block)] rounded-lg overflow-hidden my-2 border border-[var(--color-border)]">
-      <div className="bg-[var(--color-surface-code-header)] px-3 py-1.5 flex justify-between items-center text-[10px]">
+    <div className="bg-[var(--color-surface-code-block)] rounded-lg overflow-hidden my-1 border border-[var(--color-border)]">
+      <div className="bg-[var(--color-surface-code-header)] px-2 py-1 flex justify-between items-center text-[10px]">
         <span className="text-[var(--color-text-secondary)] font-medium">
           {language || 'code'}
         </span>
@@ -57,7 +57,7 @@ const CodeBlock = memo(function CodeBlock({ children, className, ...props }: any
           )}
         </button>
       </div>
-      <pre className="p-3 overflow-x-auto">
+      <pre className="p-2 overflow-x-auto">
         <code className={className} {...props}>
           {children}
         </code>
@@ -183,7 +183,7 @@ const MessageBubble = memo(function MessageBubble({
             </button>
           </div>
         )}
-        <div className="text-sm leading-tight text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-1.5 prose-headings:mt-3 prose-headings:mb-1.5 prose-li:my-0.5 prose-pre:my-2 prose-code:text-xs">
+        <div className="text-sm leading-tight text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-1.5 prose-headings:mt-3 prose-headings:mb-1.5 prose-li:my-0.5 prose-pre:my-1 prose-code:text-xs">
           {renderedContent}
         </div>
         {/* Timestamp */}
@@ -368,24 +368,28 @@ export default function ChatView({
   } | null>(null);
   const [_previousModel, setPreviousModel] = useState<string>('');
   const [_previousFallbackModel, setPreviousFallbackModel] = useState<string>('');
+  const [isNearBottom, setIsNearBottom] = useState(true);
 
-  // Auto-scroll
-  useEffect(() => {
-    if (isInitialLoad.current && messages.length > 0) {
-      isInitialLoad.current = false;
-      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
-    } else {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [messages, streamText]);
-
-  // Track scroll position for scroll-to-bottom button
+  // Track scroll position for scroll-to-bottom button and auto-scroll behavior
   const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current) return;
     const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
     const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
     setShowScrollButton(distanceFromBottom > 200);
+    // User is "near bottom" if within 50px of bottom
+    setIsNearBottom(distanceFromBottom < 50);
   }, []);
+
+  // Auto-scroll only when user is near the bottom
+  useEffect(() => {
+    if (isInitialLoad.current && messages.length > 0) {
+      isInitialLoad.current = false;
+      messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    } else if (isNearBottom) {
+      // Only auto-scroll if user is near bottom
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, streamText, isNearBottom]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -746,7 +750,7 @@ export default function ChatView({
           {streaming && (
             <div className="py-1.5">
               <div className="max-w-5xl mx-auto px-2">
-                <div className="text-sm leading-tight text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-1.5 prose-headings:mt-3 prose-headings:mb-1.5 prose-li:my-0.5 prose-pre:my-2 prose-code:text-xs">
+                <div className="text-sm leading-tight text-[var(--color-text-primary)] prose prose-invert max-w-none prose-p:my-1.5 prose-headings:mt-3 prose-headings:mb-1.5 prose-li:my-0.5 prose-pre:my-1 prose-code:text-xs">
                   {streamingContent}
                 </div>
               </div>
