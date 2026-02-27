@@ -111,7 +111,8 @@ export default function Sidebar({
   theme,
   onToggleTheme,
 }: SidebarProps) {
-  const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : theme === 'terminal' ? TerminalIcon : Radiation;
+  // @ts-ignore - Radiation may not be available in all lucide versions
+const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : theme === 'terminal' ? TerminalIcon : (Radiation || Sun);
   const [reconnectingGateways, setReconnectingGateways] = useState<Set<string>>(new Set());
   const [notificationPrefs, setNotificationPrefs] = useState<Record<string, boolean>>({});
   const [sessionsCollapsed, setSessionsCollapsed] = useState(true);
