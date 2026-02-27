@@ -17,7 +17,8 @@ import {
   Bell,
   BellOff,
   RefreshCw,
-  ChevronDown
+  ChevronDown,
+  Radiation
 } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -110,7 +111,7 @@ export default function Sidebar({
   theme,
   onToggleTheme,
 }: SidebarProps) {
-  const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : theme === 'terminal' ? TerminalIcon : Sun;
+  const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : theme === 'terminal' ? TerminalIcon : Radiation;
   const [reconnectingGateways, setReconnectingGateways] = useState<Set<string>>(new Set());
   const [notificationPrefs, setNotificationPrefs] = useState<Record<string, boolean>>({});
   const [sessionsCollapsed, setSessionsCollapsed] = useState(true);
