@@ -225,4 +225,4 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🤡 Tribute
 
-The clown emoji is a heartfelt fan tribute to the YouTube series **"u m a m i"** and the character **Mischief**. I'm genuinely a huge fan of the series' creative spirit and its exploration of AI agents and digital mischief. This project has **no official affiliation, endorsement, or sponsorship** from the Umami series or its creators — this is purely one fan's appreciation for the inspiration.
+The clown emoji is a heartfelt fan tribute to the YouTube series **"u m a m i"** and the character **Mischief**. I'm a huge fan of the series, some of the best music and art I've ever seen. This project has **no official affiliation, endorsement, or sponsorship** from the u m a m i series or its creators — this is purely one fan's appreciation for the inspiration. You should go check it out if you haven't already
