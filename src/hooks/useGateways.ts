@@ -38,6 +38,7 @@ export function useGateways() {
   const [streamText, setStreamText] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // activeProcesses now keyed by "gwId|sessionKey" to track per-session state
   const [activeProcesses, setActiveProcesses] = useState<Map<string, boolean>>(new Map());
 
   const socketsRef = useRef<Map<string, ChatSocket>>(new Map());
@@ -117,8 +118,19 @@ export function useGateways() {
       // Auto-select first gateway if none selected or if stored one doesn't exist
       if (backendGateways.length > 0 && (!activeGatewayId || !gwMap.has(activeGatewayId))) {
         const firstId = backendGateways[0].id;
+        const firstGw = gwMap.get(firstId);
         setActiveGatewayId(firstId);
         saveActiveGateway(firstId);
+        // Set active agent for initial load
+        if (firstGw) {
+          setActiveAgentId(firstGw.defaultAgentId || firstGw.agents[0]?.id || null);
+        }
+      } else if (activeGatewayId && gwMap.has(activeGatewayId)) {
+        // If we already have an active gateway, ensure active agent is set
+        const gw = gwMap.get(activeGatewayId);
+        if (gw && !activeAgentId) {
+          setActiveAgentId(gw.defaultAgentId || gw.agents[0]?.id || null);
+        }
       }
     } catch (err: any) {
       console.error('[useGateways] Failed to load gateways:', err);
@@ -167,18 +179,20 @@ export function useGateways() {
       const isActiveGateway = gwId === currentGwId;
 
       if (state === 'delta') {
-        // Mark gateway as processing
-        setActiveProcesses(prev => new Map(prev).set(gwId, true));
+        // Mark this specific session as processing (not the whole gateway)
+        const processKey = getSessionKey(gwId, currentSessionKey);
+        setActiveProcesses(prev => new Map(prev).set(processKey, true));
 
         // Only update stream text if this is the active gateway
         if (isActiveGateway && text) {
           setStreamText(text);
         }
       } else if (state === 'final') {
-        // Clear processing state for this gateway
+        // Clear processing state for this specific session
+        const processKey = getSessionKey(gwId, currentSessionKey);
         setActiveProcesses(prev => {
           const next = new Map(prev);
-          next.delete(gwId);
+          next.delete(processKey);
           return next;
         });
 
@@ -239,10 +253,12 @@ export function useGateways() {
         setStreamText('');
         setStreaming(false);
       } else if (state === 'error') {
-        // Clear processing state for this gateway
+        // Clear processing state for this specific session
+        const { activeSessionKey: currentSessionKey } = getCurrentState();
+        const processKey = getSessionKey(gwId, currentSessionKey);
         setActiveProcesses(prev => {
           const next = new Map(prev);
-          next.delete(gwId);
+          next.delete(processKey);
           return next;
         });
 

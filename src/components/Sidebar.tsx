@@ -325,6 +325,9 @@ const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : theme === 
                     );
                     const notifKey = `${gw.config.id}:${agent.id}`;
                     const notifEnabled = notificationPrefs[notifKey] ?? isNotificationEnabled(gw.config.id, agent.id);
+                    // Check if this agent's session is processing (session-specific, not gateway-wide)
+                    const sessionProcessKey = `${gw.config.id}|${activeSessionKey}`;
+                    const isProcessing = activeProcesses?.get(sessionProcessKey) || false;
 
                     return (
                       <div key={agent.id} className="space-y-1">
@@ -347,7 +350,7 @@ const ThemeIcon = theme === 'dark' ? Moon : theme === 'light' ? Sun : theme === 
                               ) : (
                                 <span className="w-1.5 h-1.5 rounded-full bg-[var(--status-online)] flex-shrink-0" />
                               )
-                            ) : activeProcesses?.get(gw.config.id) ? (
+                            ) : isProcessing ? (
                               <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-accent)] flex-shrink-0 animate-pulse" title="Processing" />
                             ) : null}
                             <span className="text-sm">{agentEmoji}</span>
