@@ -352,6 +352,7 @@ export default function ChatView({
   onDismissError,
   onUpdateAgentModel,
   onToggleAdvancedReasoning,
+  sessionModel,
 }: ChatViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -473,7 +474,6 @@ export default function ChatView({
 
   // Get model display names
   // Priority: selectedModel (UI override) > session.model (from backend) > agent.model (from gateway) > gateway.defaultModel
-  const { sessionModel } = props;
   const agentModel = activeAgent?.selectedModel || sessionModel || activeAgent?.model || activeGateway?.defaultModel || '';
   const agentFallbackModel = activeAgent?.fallbackModel || '';
   const isUsingDefaultModel = !activeAgent?.selectedModel && (!!activeAgent?.model || !!activeGateway?.defaultModel);
