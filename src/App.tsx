@@ -235,11 +235,13 @@ export default function App() {
           <ChatView
             messages={gw.messages}
             streamText={gw.streamText}
+            streamContent={gw.streamContent}
             streaming={gw.streaming}
             loadingHistory={gw.loadingHistory}
             activeGateway={gw.activeGateway}
             activeAgentId={gw.activeAgentId}
             error={gw.error}
+            latestUsage={gw.latestUsage}
             onSend={gw.sendMessage}
             onAbort={gw.abortRun}
             onDismissError={() => gw.setError(null)}

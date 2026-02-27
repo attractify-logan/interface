@@ -1,18 +1,20 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { ChatMessage, Gateway } from '../types';
+import type { ChatMessage, Gateway, ContentBlock, UsageInfo } from '../types';
 import { extractText, stripThinking } from '../hooks/useGateways';
-import { Send, Square, ArrowDown, Copy, Check, ChevronDown, Brain } from 'lucide-react';
+import { Send, Square, ArrowDown, Copy, Check, ChevronDown, Brain, Terminal, CheckCircle, XCircle } from 'lucide-react';
 
 interface ChatViewProps {
   messages: ChatMessage[];
   streamText: string;
+  streamContent?: any[];
   streaming: boolean;
   loadingHistory?: boolean;
   activeGateway: Gateway | null;
   activeAgentId: string | null;
   error: string | null;
+  latestUsage?: UsageInfo | null;
   onSend: (text: string) => void;
   onAbort: () => void;
   onDismissError: () => void;
@@ -20,6 +22,86 @@ interface ChatViewProps {
   onToggleAdvancedReasoning?: (gatewayId: string, agentId: string, enabled: boolean) => void;
   sessionModel?: string;
 }
+
+// Tool Use block component
+const ToolUseBlock = memo(function ToolUseBlock({ block }: { block: any }) {
+  const [expanded, setExpanded] = useState(false);
+  const { id, name, input } = block;
+
+  // Format the input nicely
+  const inputStr = typeof input === 'string' ? input : JSON.stringify(input, null, 2);
+  const displayInput = inputStr.length > 100 && !expanded ? inputStr.substring(0, 100) + '...' : inputStr;
+
+  return (
+    <div className="my-2 border border-[var(--color-border)] rounded-lg overflow-hidden bg-[var(--color-surface-raised)]">
+      <div className="bg-[var(--color-surface-code-header)] px-3 py-1.5 flex items-center gap-2">
+        <Terminal size={12} className="text-[var(--color-accent)]" />
+        <span className="text-[10px] font-medium text-[var(--color-text-primary)]">
+          Tool: <span className="font-mono text-[var(--color-accent)]">{name}</span>
+        </span>
+        {inputStr.length > 100 && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="ml-auto text-[9px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+          >
+            {expanded ? 'Show less' : 'Show more'}
+          </button>
+        )}
+      </div>
+      {inputStr && (
+        <pre className="px-3 py-2 text-[10px] text-[var(--color-text-secondary)] overflow-x-auto font-mono">
+          {displayInput}
+        </pre>
+      )}
+    </div>
+  );
+});
+
+// Tool Result block component
+const ToolResultBlock = memo(function ToolResultBlock({ block }: { block: any }) {
+  const [expanded, setExpanded] = useState(false);
+  const { tool_use_id, content, is_error } = block;
+
+  // Format the content nicely
+  const contentStr = typeof content === 'string' ? content : JSON.stringify(content, null, 2);
+  const displayContent = contentStr.length > 200 && !expanded ? contentStr.substring(0, 200) + '...' : contentStr;
+
+  return (
+    <div className={`my-2 border rounded-lg overflow-hidden ${
+      is_error
+        ? 'border-[var(--status-offline)] bg-[var(--status-offline)]/10'
+        : 'border-[var(--color-border)] bg-[var(--color-surface-raised)]'
+    }`}>
+      <div className={`px-3 py-1.5 flex items-center gap-2 ${
+        is_error ? 'bg-[var(--status-offline)]/20' : 'bg-[var(--color-surface-code-header)]'
+      }`}>
+        {is_error ? (
+          <XCircle size={12} className="text-[var(--status-offline)]" />
+        ) : (
+          <CheckCircle size={12} className="text-green-500" />
+        )}
+        <span className="text-[10px] font-medium text-[var(--color-text-primary)]">
+          Tool Result {is_error && <span className="text-[var(--status-offline)]">(Error)</span>}
+        </span>
+        {contentStr.length > 200 && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="ml-auto text-[9px] text-[var(--color-text-muted)] hover:text-[var(--color-text-secondary)]"
+          >
+            {expanded ? 'Show less' : 'Show more'}
+          </button>
+        )}
+      </div>
+      {contentStr && (
+        <pre className={`px-3 py-2 text-[10px] overflow-x-auto font-mono ${
+          is_error ? 'text-red-400' : 'text-[var(--color-text-secondary)]'
+        }`}>
+          {displayContent}
+        </pre>
+      )}
+    </div>
+  );
+});
 
 // Code block component with header and copy button
 const CodeBlock = memo(function CodeBlock({ children, className, ...props }: any) {
@@ -84,6 +166,43 @@ const MessageBubble = memo(function MessageBubble({
     setTimeout(() => setCopied(false), 2000);
   }, [text]);
 
+  // Render individual content blocks
+  const renderContentBlock = useCallback((block: ContentBlock, index: number) => {
+    if (block.type === 'text') {
+      const cleanedText = stripThinking(block.text || '');
+      if (!cleanedText.trim()) return null;
+
+      return (
+        <ReactMarkdown
+          key={index}
+          remarkPlugins={[remarkGfm]}
+          components={{
+            code({ inline, className, children, ...props }: any) {
+              if (inline) {
+                return (
+                  <code className="bg-[var(--color-surface-raised)] px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+                    {children}
+                  </code>
+                );
+              }
+              return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
+            },
+            pre({ children }: any) {
+              return <>{children}</>;
+            },
+          }}
+        >
+          {cleanedText}
+        </ReactMarkdown>
+      );
+    } else if (block.type === 'tool_use') {
+      return <ToolUseBlock key={index} block={block} />;
+    } else if (block.type === 'tool_result') {
+      return <ToolResultBlock key={index} block={block} />;
+    }
+    return null;
+  }, []);
+
   const getRelativeTime = useCallback(() => {
     if (!message.timestamp) return '';
     const now = Date.now();
@@ -99,33 +218,10 @@ const MessageBubble = memo(function MessageBubble({
     return 'Just now';
   }, [message.timestamp]);
 
-  // Memoize the markdown rendering
+  // Memoize the content rendering
   const renderedContent = useMemo(() => {
-    const cleanedText = stripThinking(text);
-
-    return (
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          code({ inline, className, children, ...props }: any) {
-            if (inline) {
-              return (
-                <code className="bg-[var(--color-surface-raised)] px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
-                  {children}
-                </code>
-              );
-            }
-            return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
-          },
-          pre({ children }: any) {
-            return <>{children}</>;
-          },
-        }}
-      >
-        {cleanedText}
-      </ReactMarkdown>
-    );
-  }, [text]);
+    return message.content.map((block, index) => renderContentBlock(block, index));
+  }, [message.content, renderContentBlock]);
 
   if (message.role === 'user') {
     return (
@@ -342,11 +438,13 @@ const EmptyState = memo(function EmptyState({
 export default function ChatView({
   messages,
   streamText,
+  streamContent,
   streaming,
   loadingHistory = false,
   activeGateway,
   activeAgentId,
   error,
+  latestUsage,
   onSend,
   onAbort,
   onDismissError,
@@ -445,8 +543,25 @@ export default function ChatView({
     setFallbackDropdownOpen(false);
   }, [activeGateway, activeAgent, onUpdateAgentModel, messages.length]);
 
-  // Calculate context percentage (approximate based on character count)
+  // Calculate context percentage using actual usage data if available, otherwise estimate
   const contextPercentage = useMemo(() => {
+    const maxTokens = activeGateway?.models?.find(m => m.contextWindow)?.contextWindow || 200000;
+
+    // Use actual usage data if available
+    if (latestUsage && (latestUsage.input_tokens || latestUsage.output_tokens)) {
+      const totalUsedTokens = (latestUsage.input_tokens || 0) + (latestUsage.output_tokens || 0);
+      const percentage = Math.min((totalUsedTokens / maxTokens) * 100, 100);
+      console.log('[context %] Using actual usage data:', {
+        input: latestUsage.input_tokens,
+        output: latestUsage.output_tokens,
+        total: totalUsedTokens,
+        max: maxTokens,
+        percentage: Math.round(percentage)
+      });
+      return percentage;
+    }
+
+    // Fallback to heuristic estimation
     // Count characters in all visible messages
     let totalChars = 0;
     for (const msg of messages) {
@@ -465,10 +580,15 @@ export default function ChatView({
     if (messages.length === 0) return 0;
     const messagePairs = Math.ceil(messages.length / 2); // user+assistant = 1 pair
     const estimatedTotalTokens = messagePairs * 6000 + 50000;
-    const maxTokens = activeGateway?.models?.find(m => m.contextWindow)?.contextWindow || 200000;
     const percentage = Math.min((estimatedTotalTokens / maxTokens) * 100, 100);
+    console.log('[context %] Using heuristic estimation:', {
+      messagePairs,
+      estimatedTokens: estimatedTotalTokens,
+      max: maxTokens,
+      percentage: Math.round(percentage)
+    });
     return percentage;
-  }, [messages, streamText, activeGateway]);
+  }, [messages, streamText, activeGateway, latestUsage]);
 
   // Context bar color based on percentage
   const contextBarColor = useMemo(() => {
@@ -485,21 +605,15 @@ export default function ChatView({
   const modelShortName = agentModel.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') || 'None';
   const fallbackShortName = agentFallbackModel ? agentFallbackModel.split('/').pop()?.replace('claude-', '').replace('anthropic.', '') : 'None';
 
-  // Memoize streaming content
-  const streamingContent = useMemo(() => {
-    if (!streamText) {
-      return (
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full animate-bounce" />
-          <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full animate-bounce [animation-delay:150ms]" />
-          <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full animate-bounce [animation-delay:300ms]" />
-        </div>
-      );
-    }
+  // Render streaming content block
+  const renderStreamBlock = useCallback((block: any, index: number) => {
+    if (block.type === 'text') {
+      const cleanedText = stripThinking(block.text || '');
+      if (!cleanedText.trim()) return null;
 
-    return (
-      <>
+      return (
         <ReactMarkdown
+          key={index}
           remarkPlugins={[remarkGfm]}
           components={{
             code({ inline, className, children, ...props }: any) {
@@ -517,15 +631,67 @@ export default function ChatView({
             },
           }}
         >
-          {stripThinking(streamText)}
+          {cleanedText}
         </ReactMarkdown>
+      );
+    } else if (block.type === 'tool_use') {
+      return <ToolUseBlock key={index} block={block} />;
+    } else if (block.type === 'tool_result') {
+      return <ToolResultBlock key={index} block={block} />;
+    }
+    return null;
+  }, []);
+
+  // Memoize streaming content
+  const streamingContent = useMemo(() => {
+    const hasContent = streamContent && streamContent.length > 0;
+    const hasText = streamText && streamText.trim().length > 0;
+
+    if (!hasContent && !hasText) {
+      return (
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full animate-bounce" />
+          <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full animate-bounce [animation-delay:150ms]" />
+          <div className="w-2 h-2 bg-[var(--color-text-muted)] rounded-full animate-bounce [animation-delay:300ms]" />
+        </div>
+      );
+    }
+
+    return (
+      <>
+        {hasContent ? (
+          // Render full content blocks
+          streamContent!.map((block, index) => renderStreamBlock(block, index))
+        ) : (
+          // Fallback to text-only rendering
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              code({ inline, className, children, ...props }: any) {
+                if (inline) {
+                  return (
+                    <code className="bg-[var(--color-surface-raised)] px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+                      {children}
+                    </code>
+                  );
+                }
+                return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
+              },
+              pre({ children }: any) {
+                return <>{children}</>;
+              },
+            }}
+          >
+            {stripThinking(streamText)}
+          </ReactMarkdown>
+        )}
         <span
           className="inline-block w-2 h-5 rounded-sm animate-pulse ml-0.5"
           style={{ background: 'var(--color-accent)' }}
         />
       </>
     );
-  }, [streamText]);
+  }, [streamText, streamContent, renderStreamBlock]);
 
   return (
     <div className="flex-1 flex flex-col min-h-0">

@@ -117,49 +117,49 @@ async def websocket_chat(websocket: WebSocket, gateway_id: str):
                 state = payload.get("state")
                 
                 if state == "delta":
-                    # Extract text from content blocks
+                    # Forward full content blocks (including tool_use, tool_result, etc.)
                     message = payload.get("message", {})
                     content = message.get("content", [])
-                    text = ""
-                    for block in content:
-                        if block.get("type") == "text":
-                            text += block.get("text", "")
-                    
+
                     await websocket.send_json({
                         "type": "stream",
                         "state": "delta",
-                        "text": text
+                        "content": content
                     })
                 
                 elif state == "final":
-                    # Extract and strip thinking tags
+                    # Forward full content blocks (including tool_use, tool_result, etc.)
                     message = payload.get("message", {})
                     content = message.get("content", [])
-                    text = ""
+
+                    # Strip thinking tags from text blocks only
+                    cleaned_content = []
                     for block in content:
                         if block.get("type") == "text":
-                            text += block.get("text", "")
-                    
-                    # Strip thinking tags
-                    text = conn.strip_thinking_tags(text)
-                    
+                            text = block.get("text", "")
+                            cleaned_text = conn.strip_thinking_tags(text)
+                            cleaned_content.append({"type": "text", "text": cleaned_text})
+                        else:
+                            # Preserve non-text blocks as-is (tool_use, tool_result, etc.)
+                            cleaned_content.append(block)
+
                     # Forward usage/context info if available
                     usage = payload.get("usage") or payload.get("context") or {}
                     final_msg = {
                         "type": "stream",
                         "state": "final",
-                        "text": text
+                        "content": cleaned_content
                     }
                     if usage:
                         final_msg["usage"] = usage
                     # Also check for context in the message
-                    msg_usage = payload.get("message", {}).get("usage")
+                    msg_usage = message.get("usage")
                     if msg_usage:
                         final_msg["usage"] = msg_usage
-                    
+
                     # Log payload keys for debugging
-                    print(f"[final] payload keys: {list(payload.keys())}")
-                    
+                    print(f"[final] payload keys: {list(payload.keys())}, usage: {usage or msg_usage or 'none'}")
+
                     await websocket.send_json(final_msg)
                 
                 elif state == "error":
@@ -469,10 +469,6 @@ async def websocket_federated_chat(websocket: WebSocket):
 
                                     if state == "delta":
                                         content = message.get("content", [])
-                                        text = ""
-                                        for block in content:
-                                            if block.get("type") == "text":
-                                                text += block.get("text", "")
 
                                         await websocket.send_json({
                                             "type": "stream",
@@ -481,18 +477,22 @@ async def websocket_federated_chat(websocket: WebSocket):
                                                 "agent_name": agent_name
                                             },
                                             "state": "delta",
-                                            "text": text
+                                            "content": content
                                         })
 
                                     elif state == "final":
                                         content = message.get("content", [])
-                                        text = ""
+
+                                        # Strip thinking tags from text blocks only
+                                        cleaned_content = []
                                         for block in content:
                                             if block.get("type") == "text":
-                                                text += block.get("text", "")
-
-                                        # Strip thinking tags
-                                        text = conn.strip_thinking_tags(text)
+                                                text = block.get("text", "")
+                                                cleaned_text = conn.strip_thinking_tags(text)
+                                                cleaned_content.append({"type": "text", "text": cleaned_text})
+                                            else:
+                                                # Preserve non-text blocks as-is
+                                                cleaned_content.append(block)
 
                                         await websocket.send_json({
                                             "type": "stream",
@@ -501,7 +501,7 @@ async def websocket_federated_chat(websocket: WebSocket):
                                                 "agent_name": agent_name
                                             },
                                             "state": "final",
-                                            "text": text
+                                            "content": cleaned_content
                                         })
 
                                     elif state == "error":
