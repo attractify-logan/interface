@@ -179,16 +179,18 @@ export function useGateways() {
       const status = data.status || {};
       const contextTokens = status.contextTokens || status.context_tokens;
       const maxTokens = status.maxTokens || status.max_tokens;
+      const percentUsed = status.percentUsed;
 
-      console.log('[session_status] Received:', { contextTokens, maxTokens });
+      console.log('[session_status] Received:', { contextTokens, maxTokens, percentUsed });
 
       // Convert to usage format for latestUsage
-      if (contextTokens !== undefined) {
+      if (contextTokens !== undefined || percentUsed !== undefined) {
         setLatestUsage({
-          input_tokens: contextTokens,
-          output_tokens: 0, // Not provided separately
+          input_tokens: contextTokens || 0,
+          output_tokens: 0,
           context_tokens: contextTokens,
           max_tokens: maxTokens,
+          percent_used: percentUsed,  // Direct from gateway
         });
       }
     });

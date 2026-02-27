@@ -117,6 +117,7 @@ async def websocket_chat(websocket: WebSocket, gateway_id: str):
     
     # Track latest session status for including with final messages
     latest_session_status = {}
+    current_session_key = {"value": None}  # Track active session for status requests
 
     # Background task to forward session status events
     async def forward_session_status_events():
@@ -225,7 +226,33 @@ async def websocket_chat(websocket: WebSocket, gateway_id: str):
                             print(f"[final] Using session status data: {ctx_tokens}/{max_tokens} tokens")
 
                     await websocket.send_json(final_msg)
-                
+
+                    # After sending the final message, request gateway status for real context data
+                    try:
+                        sk = current_session_key.get("value")
+                        if sk:
+                            status_res = await conn.request("status", {})
+                            if status_res and status_res.get("ok"):
+                                sessions = status_res.get("payload", {}).get("sessions", {}).get("recent", [])
+                                for s in sessions:
+                                    if s.get("key") == sk:
+                                        ctx_used = s.get("totalTokens")
+                                        ctx_max = s.get("contextTokens", 200000)
+                                        pct = s.get("percentUsed")
+                                        if ctx_used is not None:
+                                            await websocket.send_json({
+                                                "type": "session_status",
+                                                "status": {
+                                                    "contextTokens": ctx_used,
+                                                    "maxTokens": ctx_max,
+                                                    "percentUsed": pct
+                                                }
+                                            })
+                                            print(f"[status] Context for {sk}: {ctx_used}/{ctx_max} ({pct}%)")
+                                        break
+                    except Exception as e:
+                        print(f"[status] Request failed: {e}")
+
                 elif state == "error":
                     error_msg = payload.get("error", "Unknown error")
                     await websocket.send_json({
@@ -254,6 +281,7 @@ async def websocket_chat(websocket: WebSocket, gateway_id: str):
 
             elif msg_type == "chat":
                 session_key = data.get("sessionKey")
+                current_session_key["value"] = session_key
                 message = data.get("message")
                 
                 if not session_key or not message:

@@ -560,6 +560,11 @@ export default function ChatView({
 
     // Use actual usage data if available
     if (latestUsage) {
+      // Use percentUsed directly from gateway if available (most accurate)
+      if (latestUsage.percent_used !== undefined) {
+        console.log('[context %] Using gateway percentUsed:', latestUsage.percent_used);
+        return latestUsage.percent_used;
+      }
       // Check for context_tokens first (from session status)
       if (latestUsage.context_tokens !== undefined) {
         const percentage = Math.min((latestUsage.context_tokens / maxTokens) * 100, 100);
