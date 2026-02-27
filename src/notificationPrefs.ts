@@ -86,12 +86,26 @@ export function showNotification(
   console.log('[notif] showNotification called, visible:', document.visibilityState, 'hasFocus:', document.hasFocus(), 'permission:', Notification.permission);
 
   if (!('Notification' in window)) {
+    console.log('[notif] Browser does not support notifications');
     return;
   }
 
   if (Notification.permission !== 'granted') {
+    console.log('[notif] Permission not granted:', Notification.permission);
     return;
   }
+
+  // Only show notification if tab is not focused or hidden
+  // Firefox/Zen: Check both document.hidden and !document.hasFocus() for reliability
+  const isTabVisible = document.visibilityState === 'visible';
+  const isTabFocused = document.hasFocus();
+
+  if (isTabVisible && isTabFocused) {
+    console.log('[notif] Tab is visible and focused - skipping notification');
+    return;
+  }
+
+  console.log('[notif] Showing notification - tab visible:', isTabVisible, 'focused:', isTabFocused);
 
   try {
     const title = gatewayName
@@ -109,7 +123,8 @@ export function showNotification(
       tag: `openclaw-${Date.now()}`, // Unique tag to avoid notification stacking
       requireInteraction: false,
     });
+    console.log('[notif] Notification created successfully');
   } catch (err) {
-    console.error('Failed to show notification:', err);
+    console.error('[notif] Failed to show notification:', err);
   }
 }
