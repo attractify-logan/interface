@@ -43,6 +43,10 @@ export function useGateways() {
   const socketsRef = useRef<Map<string, ChatSocket>>(new Map());
   const switchingRef = useRef(false); // Track when we're actively switching to prevent duplicate loads
 
+  // Keep a ref of current state so WebSocket callbacks always see latest values
+  const stateRef = useRef({ activeGatewayId, activeAgentId, activeSessionKey, gateways });
+  stateRef.current = { activeGatewayId, activeAgentId, activeSessionKey, gateways };
+
   // Helper to get session key for message storage
   const getSessionKey = useCallback((gwId: string, sessionKey: string) => {
     return `${gwId}|${sessionKey}`;
@@ -134,13 +138,8 @@ export function useGateways() {
     const socket = new ChatSocket();
     socketsRef.current.set(gwId, socket);
 
-    // Capture current state for closures
-    const getCurrentState = () => ({
-      gateways: gateways,
-      activeAgentId: activeAgentId,
-      activeGatewayId: activeGatewayId,
-      activeSessionKey: activeSessionKey,
-    });
+    // Use stateRef so WebSocket callbacks always see the latest state (no stale closures)
+    const getCurrentState = () => stateRef.current;
 
     // Handle connected event
     socket.on('connected', (data: any) => {
