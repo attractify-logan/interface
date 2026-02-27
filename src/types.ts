@@ -98,7 +98,7 @@ export interface Gateway {
 
 export type Tab = 'chat' | 'dashboard' | 'agents' | 'sessions' | 'nodes' | 'cron' | 'config' | 'about';
 
-export type Theme = 'dark' | 'light' | 'terminal';
+export type Theme = 'dark' | 'light' | 'terminal' | 'amber';
 
 export interface FederatedSessionGateway {
   gateway_id: string;

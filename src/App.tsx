@@ -115,6 +115,7 @@ export default function App() {
     setTheme(prev => {
       if (prev === 'dark') return 'light';
       if (prev === 'light') return 'terminal';
+      if (prev === 'terminal') return 'amber';
       return 'dark';
     });
   }, []);

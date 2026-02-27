@@ -15,7 +15,7 @@ interface CommandPaletteProps {
   }) => Promise<void>;
   onNewChat: () => void;
   onSwitchSession: (key: string) => void;
-  theme: 'dark' | 'light' | 'terminal';
+  theme: 'dark' | 'light' | 'terminal' | 'amber';
 }
 
 type ActionType = 'quick' | 'agent' | 'session';
