@@ -127,18 +127,53 @@ export default function App() {
   const handleSwitchSession = useCallback((key: string) => {
     gw.switchSession(key);
     setActiveTab('chat');
-  }, [gw.switchSession]);
+  }, [gw]);
 
-  const handleNewChat = useCallback(() => {
+  const handleNewChat = useCallback((config?: {
+    gatewayId?: string;
+    agentId?: string;
+    modelId?: string;
+    sessionName?: string;
+  }) => {
     if (chatMode === 'federated') {
       // Show federated setup UI
       setShowFederatedSetup(true);
       setSelectedGateways(new Set());
     } else {
-      gw.createSession();
-      setActiveTab('chat');
+      // If config provided, switch to that gateway/agent and create session
+      if (config?.gatewayId) {
+        const switchToGateway = async () => {
+          // Ensure gatewayId is defined (TypeScript guard)
+          if (!config.gatewayId) return;
+
+          // Switch to the selected gateway
+          if (gw.activeGatewayId !== config.gatewayId) {
+            await gw.switchGateway(config.gatewayId);
+          }
+
+          // Set active agent if specified
+          if (config.agentId) {
+            gw.setActiveAgentId(config.agentId);
+          }
+
+          // Update agent model if specified
+          if (config.modelId && config.agentId) {
+            gw.updateAgentModel(config.gatewayId, config.agentId, config.modelId);
+          }
+
+          // Create new session
+          gw.createSession();
+          setActiveTab('chat');
+        };
+
+        switchToGateway();
+      } else {
+        // No config - just create session on current gateway
+        gw.createSession();
+        setActiveTab('chat');
+      }
     }
-  }, [chatMode, gw.createSession]);
+  }, [chatMode, gw]);
 
   const handleCreateFederatedSession = useCallback(async () => {
     if (selectedGateways.size === 0) return;
@@ -372,6 +407,7 @@ export default function App() {
         onClose={() => setShowCommandPalette(false)}
         agents={aggregatedAgents}
         sessions={gw.sessions}
+        gateways={gw.gateways}
         onSpawnAgent={handleSpawnAgent}
         onNewChat={handleNewChat}
         onSwitchSession={handleSwitchSession}

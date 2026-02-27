@@ -1,19 +1,25 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import type { AggregatedAgent } from '../hooks/useAgentSpawn';
-import type { SessionInfo, ModelInfo } from '../types';
+import type { SessionInfo, ModelInfo, Gateway } from '../types';
 
 interface CommandPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   agents: AggregatedAgent[];
   sessions: SessionInfo[];
+  gateways: Map<string, Gateway>; // Gateway map for New Chat selection
   onSpawnAgent: (config: {
     agentId: string;
     gatewayId: string;
     sessionName?: string;
     modelId?: string;
   }) => Promise<void>;
-  onNewChat: () => void;
+  onNewChat: (config?: {
+    gatewayId?: string;
+    agentId?: string;
+    modelId?: string;
+    sessionName?: string;
+  }) => void;
   onSwitchSession: (key: string) => void;
   theme: 'dark' | 'light' | 'terminal' | 'amber';
 }
@@ -36,11 +42,19 @@ interface SpawnOptions {
   gatewayId?: string;
 }
 
+interface NewChatOptions {
+  gatewayId: string;
+  agentId?: string;
+  modelId?: string;
+  sessionName: string;
+}
+
 export function CommandPalette({
   isOpen,
   onClose,
   agents,
   sessions,
+  gateways,
   onSpawnAgent,
   onNewChat,
   onSwitchSession,
@@ -49,11 +63,17 @@ export function CommandPalette({
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showSpawnOptions, setShowSpawnOptions] = useState(false);
+  const [showNewChatOptions, setShowNewChatOptions] = useState(false);
   const [selectedAgent, setSelectedAgent] = useState<AggregatedAgent | null>(null);
   const [spawnOptions, setSpawnOptions] = useState<SpawnOptions>({
     sessionName: '',
   });
+  const [newChatOptions, setNewChatOptions] = useState<NewChatOptions>({
+    gatewayId: '',
+    sessionName: '',
+  });
   const [spawning, setSpawning] = useState(false);
+  const [creating, setCreating] = useState(false);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -145,6 +165,7 @@ export function CommandPalette({
       setQuery('');
       setSelectedIndex(0);
       setShowSpawnOptions(false);
+      setShowNewChatOptions(false);
       setSelectedAgent(null);
       inputRef.current?.focus();
     }
@@ -169,16 +190,33 @@ export function CommandPalette({
     }
   }, [selectedAgent]);
 
+  // Initialize new chat options with first available gateway
+  useEffect(() => {
+    if (showNewChatOptions && gateways.size > 0 && !newChatOptions.gatewayId) {
+      const firstGateway = Array.from(gateways.values())[0];
+      const timestamp = new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      setNewChatOptions({
+        gatewayId: firstGateway.config.id,
+        agentId: firstGateway.defaultAgentId || firstGateway.agents[0]?.id,
+        sessionName: `Chat - ${timestamp}`,
+      });
+    }
+  }, [showNewChatOptions, gateways, newChatOptions.gatewayId]);
+
   // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!isOpen) return;
 
-      // Spawning options view
-      if (showSpawnOptions) {
+      // Spawning options view or New Chat options view
+      if (showSpawnOptions || showNewChatOptions) {
         if (e.key === 'Escape') {
           e.preventDefault();
           setShowSpawnOptions(false);
+          setShowNewChatOptions(false);
           setSelectedAgent(null);
         }
         return;
@@ -212,7 +250,7 @@ export function CommandPalette({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, selectedIndex, filteredItems, showSpawnOptions]);
+  }, [isOpen, selectedIndex, filteredItems, showSpawnOptions, showNewChatOptions]);
 
   // Scroll selected item into view
   useEffect(() => {
@@ -227,8 +265,8 @@ export function CommandPalette({
   const handleSelectItem = (item: PaletteItem) => {
     if (item.type === 'quick') {
       if (item.id === 'new-chat') {
-        onNewChat();
-        onClose();
+        // Show new chat options instead of immediately creating
+        setShowNewChatOptions(true);
       }
     } else if (item.type === 'agent') {
       setSelectedAgent(item.data as AggregatedAgent);
@@ -255,6 +293,25 @@ export function CommandPalette({
       console.error('Failed to spawn agent:', error);
     } finally {
       setSpawning(false);
+    }
+  };
+
+  const handleCreateNewChat = () => {
+    if (!newChatOptions.gatewayId) return;
+
+    setCreating(true);
+    try {
+      onNewChat({
+        gatewayId: newChatOptions.gatewayId,
+        agentId: newChatOptions.agentId || undefined,
+        modelId: newChatOptions.modelId || undefined,
+        sessionName: newChatOptions.sessionName || undefined,
+      });
+      onClose();
+    } catch (error) {
+      console.error('Failed to create new chat:', error);
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -292,7 +349,7 @@ export function CommandPalette({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Main Palette View */}
-        {!showSpawnOptions && (
+        {!showSpawnOptions && !showNewChatOptions && (
           <>
             {/* Search Input */}
             <div
@@ -540,6 +597,217 @@ export function CommandPalette({
                 onClick={() => {
                   setShowSpawnOptions(false);
                   setSelectedAgent(null);
+                }}
+                className="px-4 py-2 rounded font-medium transition-all"
+                style={{
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-primary)',
+                  border: '1px solid var(--color-border)',
+                }}
+              >
+                Back
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* New Chat Options View */}
+        {showNewChatOptions && (
+          <div className="p-6 animate-fade-in">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="text-4xl">💬</div>
+              <div className="flex-1">
+                <h2
+                  className="text-xl font-semibold"
+                  style={{ color: 'var(--color-text-primary)' }}
+                >
+                  Start New Chat
+                </h2>
+                <p
+                  className="text-sm"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  Select gateway, agent, and model for your conversation
+                </p>
+              </div>
+            </div>
+
+            {/* Form */}
+            <div className="space-y-4">
+              {/* Gateway Selection */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  Gateway
+                </label>
+                <select
+                  value={newChatOptions.gatewayId}
+                  onChange={(e) => {
+                    const selectedGw = gateways.get(e.target.value);
+                    setNewChatOptions((prev) => ({
+                      ...prev,
+                      gatewayId: e.target.value,
+                      agentId: selectedGw?.defaultAgentId || selectedGw?.agents[0]?.id,
+                      modelId: undefined, // Reset model when gateway changes
+                    }));
+                  }}
+                  className="w-full px-3 py-2 rounded border outline-none focus:border-accent transition-colors"
+                  style={{
+                    background: 'var(--color-surface-input)',
+                    color: 'var(--color-text-primary)',
+                    borderColor: 'var(--color-border-input)',
+                  }}
+                  autoFocus
+                >
+                  {Array.from(gateways.values()).map((gw: any) => (
+                    <option key={gw.config.id} value={gw.config.id}>
+                      {gw.config.name} {!gw.connected && '(disconnected)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Agent Selection */}
+              {newChatOptions.gatewayId && (() => {
+                const selectedGw = gateways.get(newChatOptions.gatewayId);
+                if (selectedGw && selectedGw.agents.length > 0) {
+                  return (
+                    <div>
+                      <label
+                        className="block text-sm font-medium mb-2"
+                        style={{ color: 'var(--color-text-secondary)' }}
+                      >
+                        Agent (Optional)
+                      </label>
+                      <select
+                        value={newChatOptions.agentId || ''}
+                        onChange={(e) =>
+                          setNewChatOptions((prev) => ({
+                            ...prev,
+                            agentId: e.target.value || undefined,
+                          }))
+                        }
+                        className="w-full px-3 py-2 rounded border outline-none focus:border-accent transition-colors"
+                        style={{
+                          background: 'var(--color-surface-input)',
+                          color: 'var(--color-text-primary)',
+                          borderColor: 'var(--color-border-input)',
+                        }}
+                      >
+                        <option value="">Default Agent</option>
+                        {selectedGw.agents.map((agent: any) => (
+                          <option key={agent.id} value={agent.id}>
+                            {agent.emoji ? `${agent.emoji} ` : ''}{agent.name || agent.id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* Model Selection */}
+              {newChatOptions.gatewayId && (() => {
+                const selectedGw = gateways.get(newChatOptions.gatewayId);
+                if (selectedGw && selectedGw.models && selectedGw.models.length > 0) {
+                  return (
+                    <div>
+                      <label
+                        className="block text-sm font-medium mb-2"
+                        style={{ color: 'var(--color-text-secondary)' }}
+                      >
+                        Model (Optional)
+                      </label>
+                      <select
+                        value={newChatOptions.modelId || ''}
+                        onChange={(e) =>
+                          setNewChatOptions((prev) => ({
+                            ...prev,
+                            modelId: e.target.value || undefined,
+                          }))
+                        }
+                        className="w-full px-3 py-2 rounded border outline-none focus:border-accent transition-colors"
+                        style={{
+                          background: 'var(--color-surface-input)',
+                          color: 'var(--color-text-primary)',
+                          borderColor: 'var(--color-border-input)',
+                        }}
+                      >
+                        <option value="">Default Model</option>
+                        {selectedGw.models.map((model: ModelInfo) => (
+                          <option key={model.id} value={model.id}>
+                            {model.name || model.id}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              {/* Session Name */}
+              <div>
+                <label
+                  className="block text-sm font-medium mb-2"
+                  style={{ color: 'var(--color-text-secondary)' }}
+                >
+                  Session Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newChatOptions.sessionName}
+                  onChange={(e) =>
+                    setNewChatOptions((prev) => ({
+                      ...prev,
+                      sessionName: e.target.value,
+                    }))
+                  }
+                  className="w-full px-3 py-2 rounded border outline-none focus:border-accent transition-colors"
+                  style={{
+                    background: 'var(--color-surface-input)',
+                    color: 'var(--color-text-primary)',
+                    borderColor: 'var(--color-border-input)',
+                  }}
+                  placeholder="Enter session name..."
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={handleCreateNewChat}
+                disabled={creating || !newChatOptions.gatewayId}
+                className="flex-1 px-4 py-2 rounded font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed spawn-button"
+                style={{
+                  background: 'var(--color-accent)',
+                  color: 'white',
+                }}
+              >
+                {creating ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="animate-spin">⏳</span>
+                    Creating...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    💬 Start Chat
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => {
+                  setShowNewChatOptions(false);
+                  setNewChatOptions({
+                    gatewayId: '',
+                    sessionName: '',
+                  });
                 }}
                 className="px-4 py-2 rounded font-medium transition-all"
                 style={{

@@ -31,7 +31,9 @@ export function useGateways() {
   }, []);
   // Store sessions per-gateway to prevent crosstalk between gateways
   const [sessionsByGateway, setSessionsByGateway] = useState<Map<string, SessionInfo[]>>(new Map());
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Store messages per-session to prevent crosstalk between agents/sessions
+  // Key format: "gatewayId|sessionKey"
+  const [messagesBySession, setMessagesBySession] = useState<Map<string, ChatMessage[]>>(new Map());
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [streamText, setStreamText] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -40,6 +42,18 @@ export function useGateways() {
 
   const socketsRef = useRef<Map<string, ChatSocket>>(new Map());
   const switchingRef = useRef(false); // Track when we're actively switching to prevent duplicate loads
+
+  // Helper to get session key for message storage
+  const getSessionKey = useCallback((gwId: string, sessionKey: string) => {
+    return `${gwId}|${sessionKey}`;
+  }, []);
+
+  // Helper to get messages for current session
+  const getCurrentMessages = useCallback((): ChatMessage[] => {
+    if (!activeGatewayId) return [];
+    const key = getSessionKey(activeGatewayId, activeSessionKey);
+    return messagesBySession.get(key) || [];
+  }, [activeGatewayId, activeSessionKey, messagesBySession, getSessionKey]);
 
   // Initialize - load gateways from backend on mount
   useEffect(() => {
@@ -125,6 +139,7 @@ export function useGateways() {
       gateways: gateways,
       activeAgentId: activeAgentId,
       activeGatewayId: activeGatewayId,
+      activeSessionKey: activeSessionKey,
     });
 
     // Handle connected event
@@ -149,7 +164,7 @@ export function useGateways() {
     // Handle stream events
     socket.on('stream', (data: any) => {
       const { state, text, error: streamError } = data;
-      const { activeGatewayId: currentGwId } = getCurrentState();
+      const { activeGatewayId: currentGwId, activeSessionKey: currentSessionKey } = getCurrentState();
       const isActiveGateway = gwId === currentGwId;
 
       if (state === 'delta') {
@@ -168,45 +183,55 @@ export function useGateways() {
           return next;
         });
 
-        // Final message - only add to chat if this is the active gateway
-        if (text && isActiveGateway) {
+        // Final message - add to the current session's messages
+        if (text) {
           const cleaned = stripThinking(text);
           if (cleaned) {
-            setMessages(prev => [
-              ...prev,
-              {
-                role: 'assistant',
-                content: [{ type: 'text', text: cleaned }],
-                timestamp: Date.now(),
-              },
-            ]);
+            // Store message in the correct session's message list
+            // Use the session key from the current state to ensure we're adding to the right session
+            setMessagesBySession(prev => {
+              const next = new Map(prev);
+              const key = getSessionKey(gwId, currentSessionKey);
+              const sessionMessages = next.get(key) || [];
+              next.set(key, [
+                ...sessionMessages,
+                {
+                  role: 'assistant',
+                  content: [{ type: 'text', text: cleaned }],
+                  timestamp: Date.now(),
+                },
+              ]);
+              return next;
+            });
 
-            // Show notification if enabled for this agent
-            const { gateways: currentGateways, activeAgentId: currentAgentId } = getCurrentState();
-            const gw = currentGateways.get(gwId);
+            // Show notification if enabled for this agent (only if this is the active gateway)
+            if (isActiveGateway) {
+              const { gateways: currentGateways, activeAgentId: currentAgentId } = getCurrentState();
+              const gw = currentGateways.get(gwId);
 
-            if (gw && gw.agents && gw.agents.length > 0) {
-              // Determine which agent sent this message
-              // For now, we use the active agent on this gateway
-              // In the future, we could extract agent ID from the message metadata
-              const agentId = currentAgentId || gw.agents[0]?.id;
+              if (gw && gw.agents && gw.agents.length > 0) {
+                // Determine which agent sent this message
+                // For now, we use the active agent on this gateway
+                // In the future, we could extract agent ID from the message metadata
+                const agentId = currentAgentId || gw.agents[0]?.id;
 
-              if (agentId) {
-                const agent = gw.agents.find(a => a.id === agentId);
-                const agentName = agent?.name || agent?.id || 'Agent';
+                if (agentId) {
+                  const agent = gw.agents.find(a => a.id === agentId);
+                  const agentName = agent?.name || agent?.id || 'Agent';
 
-                // Check if notifications are enabled for this agent
-                const notifEnabled = isNotificationEnabled(gwId, agentId);
+                  // Check if notifications are enabled for this agent
+                  const notifEnabled = isNotificationEnabled(gwId, agentId);
 
-                console.log('[notif] Message from gateway:', gwId,
-                           'agent:', agentName,
-                           'notif enabled:', notifEnabled,
-                           'visible:', document.visibilityState,
-                           'focus:', document.hasFocus());
+                  console.log('[notif] Message from gateway:', gwId,
+                             'agent:', agentName,
+                             'notif enabled:', notifEnabled,
+                             'visible:', document.visibilityState,
+                             'focus:', document.hasFocus());
 
-                if (notifEnabled) {
-                  // showNotification will handle checking if tab is focused/visible
-                  showNotification(agentName, cleaned, gw.config.name);
+                  if (notifEnabled) {
+                    // showNotification will handle checking if tab is focused/visible
+                    showNotification(agentName, cleaned, gw.config.name);
+                  }
                 }
               }
             }
@@ -249,7 +274,7 @@ export function useGateways() {
 
     // Connect
     socket.connect(gwId);
-  }, [gateways, activeAgentId]);
+  }, [gateways, activeAgentId, getSessionKey]);
 
   // Get active socket
   const getActiveSocket = useCallback((): ChatSocket | null => {
@@ -267,8 +292,7 @@ export function useGateways() {
     async (sessionKey?: string, gwId?: string) => {
       const gatewayId = gwId || activeGatewayId;
       if (!gatewayId || !gateways.has(gatewayId)) {
-        // No gateway selected - clear messages and exit
-        setMessages([]);
+        // No gateway selected - exit
         setLoadingHistory(false);
         return;
       }
@@ -277,13 +301,19 @@ export function useGateways() {
       setLoadingHistory(true);
       try {
         const msgs = await apiGetMessages(gatewayId, key);
-        setMessages(
-          msgs.map(m => ({
-            role: m.role,
-            content: m.content,
-            timestamp: m.timestamp,
-          }))
-        );
+        const sessionStorageKey = getSessionKey(gatewayId, key);
+        setMessagesBySession(prev => {
+          const next = new Map(prev);
+          next.set(
+            sessionStorageKey,
+            msgs.map(m => ({
+              role: m.role,
+              content: m.content,
+              timestamp: m.timestamp,
+            }))
+          );
+          return next;
+        });
       } catch (err: any) {
         console.error('[loadHistory] Error:', err);
         // Don't clear messages on error — keep whatever we had
@@ -291,7 +321,7 @@ export function useGateways() {
         setLoadingHistory(false);
       }
     },
-    [activeGatewayId, activeSessionKey, gateways]
+    [activeGatewayId, activeSessionKey, gateways, getSessionKey]
   );
 
   // Load sessions from backend for a specific gateway
@@ -341,8 +371,7 @@ export function useGateways() {
       setStreamText('');
       setStreaming(false);
 
-      // Clear stale messages immediately
-      setMessages([]);
+      // No need to clear messages - they're scoped per-session
 
       // Load sessions for the new gateway
       try {
@@ -364,7 +393,7 @@ export function useGateways() {
   const sendMessage = useCallback(
     async (text: string) => {
       const socket = getActiveSocket();
-      if (!text.trim() || streaming) return;
+      if (!text.trim() || streaming || !activeGatewayId) return;
 
       // Check if socket is actually connected before sending
       if (!socket || !socket.connected) {
@@ -378,7 +407,16 @@ export function useGateways() {
         content: [{ type: 'text', text: text.trim() }],
         timestamp: Date.now(),
       };
-      setMessages(prev => [...prev, userMsg]);
+
+      // Add user message to the current session
+      const sessionStorageKey = getSessionKey(activeGatewayId, activeSessionKey);
+      setMessagesBySession(prev => {
+        const next = new Map(prev);
+        const sessionMessages = next.get(sessionStorageKey) || [];
+        next.set(sessionStorageKey, [...sessionMessages, userMsg]);
+        return next;
+      });
+
       setStreaming(true);
       setStreamText('');
       setError(null);
@@ -399,10 +437,15 @@ export function useGateways() {
         setError(`Failed to send message: ${e.message}`);
         setStreaming(false);
         // Remove the user message we just added since send failed
-        setMessages(prev => prev.slice(0, -1));
+        setMessagesBySession(prev => {
+          const next = new Map(prev);
+          const sessionMessages = next.get(sessionStorageKey) || [];
+          next.set(sessionStorageKey, sessionMessages.slice(0, -1));
+          return next;
+        });
       }
     },
-    [getActiveSocket, activeSessionKey, streaming, loadSessions, activeGatewayId, activeAgentId, gateways]
+    [getActiveSocket, activeSessionKey, streaming, loadSessions, activeGatewayId, activeAgentId, gateways, getSessionKey]
   );
 
   // Abort current run
@@ -530,7 +573,6 @@ export function useGateways() {
       if (gwId) {
         await loadHistory(key, gwId);
       } else {
-        setMessages([]);
         setLoadingHistory(false);
       }
 
@@ -544,7 +586,7 @@ export function useGateways() {
   const createSession = useCallback(() => {
     const key = `webchat-${Date.now()}`;
     setActiveSessionKey(key);
-    setMessages([]);
+    // No need to clear messages - new session will have empty message list automatically
     setStreamText('');
     setStreaming(false);
   }, []);
@@ -604,6 +646,8 @@ export function useGateways() {
   const activeGateway = activeGatewayId ? gateways.get(activeGatewayId) || null : null;
   // Get sessions for the active gateway
   const sessions = activeGatewayId ? sessionsByGateway.get(activeGatewayId) || [] : [];
+  // Get messages for the current session
+  const messages = getCurrentMessages();
 
   return {
     gateways,
@@ -613,7 +657,7 @@ export function useGateways() {
     activeSessionKey,
     sessions, // Now returns sessions for ONLY the active gateway
     sessionsByGateway, // Expose full map for components that need all gateway sessions
-    messages,
+    messages, // Now returns messages for ONLY the current session (gatewayId + sessionKey)
     streamText,
     streaming,
     error,
