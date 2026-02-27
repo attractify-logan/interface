@@ -349,6 +349,18 @@ export function useGateways() {
     }
   }, [activeGatewayId, activeSessionKey, loadHistory, loadSessions]);
 
+  // Poll for new messages from other channels (Telegram, Slack, etc.)
+  // These don't come through WebSocket stream events, only appear in history
+  useEffect(() => {
+    if (!activeGatewayId) return;
+    const interval = setInterval(() => {
+      if (!switchingRef.current && !streaming) {
+        loadHistory();
+      }
+    }, 5000); // Poll every 5 seconds
+    return () => clearInterval(interval);
+  }, [activeGatewayId, activeSessionKey, loadHistory, streaming]);
+
   // Switch gateway
   const switchGateway = useCallback(
     async (gwId: string) => {
