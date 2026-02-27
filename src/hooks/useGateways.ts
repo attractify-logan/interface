@@ -322,10 +322,11 @@ export function useGateways() {
       setStreamText('');
       setStreaming(false);
 
-      // Load history from backend (don't clear messages first to avoid flash)
-      await loadHistory(activeSessionKey, gwId);
+      // CRITICAL: Clear messages immediately to prevent stale messages from previous gateway
+      // The caller (onSwitchAgent or useEffect) will load the correct history
+      setMessages([]);
 
-      // Load sessions
+      // Load sessions for the new gateway
       try {
         const sessions = await apiListSessions(gwId);
         setSessions(sessions);
@@ -333,10 +334,11 @@ export function useGateways() {
         setSessions([]);
       }
 
-      // Clear switching flag
+      // Clear loading and switching flags
+      setLoadingHistory(false);
       switchingRef.current = false;
     },
-    [gateways, activeSessionKey, loadHistory]
+    [gateways]
   );
 
   // Send message via WebSocket
