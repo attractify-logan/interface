@@ -298,20 +298,29 @@ export default function App() {
           }}
           activeAgentId={gw.activeAgentId}
           onReconnectGateway={gw.reconnectGateway}
-          onSwitchAgent={(gatewayId, agentId) => {
-            if (gw.activeGatewayId !== gatewayId) {
-              gw.switchGateway(gatewayId);
+          onSwitchAgent={async (gatewayId, agentId) => {
+            const switchingGateway = gw.activeGatewayId !== gatewayId;
+            if (switchingGateway) {
+              await gw.switchGateway(gatewayId);
             }
             gw.setActiveAgentId(agentId);
-            // Try to find an existing session for this agent (e.g. agent:main:main)
-            const existingSession = gw.sessions.find(
-              s => s.key === `agent:${agentId}:${agentId}` || s.key === `agent:${agentId}:main`
-            );
-            if (existingSession) {
-              gw.switchSession(existingSession.key, gatewayId);
+            // Default session key for an agent
+            const defaultKey = `agent:${agentId}:main`;
+            const altKey = `agent:${agentId}:${agentId}`;
+            // If we just switched gateways, sessions are stale in React state.
+            // Use the default key pattern directly instead of searching stale sessions.
+            if (switchingGateway) {
+              gw.switchSession(defaultKey, gatewayId);
             } else {
-              const key = `webchat-${agentId}-${Date.now()}`;
-              gw.switchSession(key, gatewayId);
+              const existingSession = gw.sessions.find(
+                s => s.key === altKey || s.key === defaultKey
+              );
+              if (existingSession) {
+                gw.switchSession(existingSession.key, gatewayId);
+              } else {
+                const key = `webchat-${agentId}-${Date.now()}`;
+                gw.switchSession(key, gatewayId);
+              }
             }
             setActiveTab('chat');
           }}
