@@ -281,9 +281,18 @@ export class ChatSocket {
   }
 
   private startHeartbeat(): void {
-    // Disabled — the OpenClaw gateway proxy doesn't respond to ping messages
-    // with pong responses, causing the pong timeout to fire and kill the connection.
-    // Re-enable once the backend supports { type: 'ping' } → { type: 'pong' }.
+    this.stopHeartbeat();
+
+    this.pingInterval = setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'ping' }));
+
+        this.pongTimeout = setTimeout(() => {
+          console.warn('[ChatSocket] Pong timeout - connection appears dead, closing...');
+          this.ws?.close();
+        }, this.PONG_TIMEOUT);
+      }
+    }, this.PING_INTERVAL);
   }
 
   private stopHeartbeat(): void {
@@ -495,7 +504,18 @@ export class FederatedChatSocket {
   }
 
   private startHeartbeat(): void {
-    // Disabled — same as ChatSocket, gateway doesn't support ping/pong
+    this.stopHeartbeat();
+
+    this.pingInterval = setInterval(() => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'ping' }));
+
+        this.pongTimeout = setTimeout(() => {
+          console.warn('[FederatedChatSocket] Pong timeout - connection appears dead, closing...');
+          this.ws?.close();
+        }, this.PONG_TIMEOUT);
+      }
+    }, this.PING_INTERVAL);
   }
 
   private stopHeartbeat(): void {
