@@ -23,8 +23,9 @@ export class GatewayClient {
   private config: GatewayConfig;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 10;
+  private maxReconnectAttempts = 50;
   private shouldReconnect = true;
+  private keepaliveTimer: ReturnType<typeof setInterval> | null = null;
   private connectResolve: ((v: void) => void) | null = null;
   private connectReject: ((e: Error) => void) | null = null;
   private connectId: string | null = null;
@@ -73,6 +74,7 @@ export class GatewayClient {
 
       this.ws.addEventListener('close', (e) => {
         clearTimeout(timeout);
+        this.stopKeepalive();
         console.log(`[GW ${this.config.name}] WebSocket closed: code=${e.code} reason=${e.reason}`);
         const wasConnected = this._connected;
         this._connected = false;
@@ -183,6 +185,7 @@ export class GatewayClient {
           console.log(`[GW ${this.config.name}] Connected! Protocol ${msg.payload?.protocol || '?'}`, 'snapshot:', msg.payload?.snapshot?.sessionDefaults);
           this._connected = true;
           this.reconnectAttempts = 0;
+          this.startKeepalive();
           this.emit('connected', msg.payload);
           this.connectResolve?.();
         } else {
@@ -269,8 +272,26 @@ export class GatewayClient {
     this.pending.clear();
   }
 
+  private startKeepalive() {
+    this.stopKeepalive();
+    this.keepaliveTimer = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        // Send a ping request — gateway will respond, keeping the connection alive
+        this.ws.send(JSON.stringify({ type: 'ping', ts: Date.now() }));
+      }
+    }, 30000); // every 30s
+  }
+
+  private stopKeepalive() {
+    if (this.keepaliveTimer) {
+      clearInterval(this.keepaliveTimer);
+      this.keepaliveTimer = null;
+    }
+  }
+
   disconnect() {
     this.shouldReconnect = false;
+    this.stopKeepalive();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
