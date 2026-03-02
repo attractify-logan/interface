@@ -276,8 +276,10 @@ export class GatewayClient {
     this.stopKeepalive();
     this.keepaliveTimer = setInterval(() => {
       if (this.ws?.readyState === WebSocket.OPEN) {
-        // Send a ping request — gateway will respond, keeping the connection alive
-        this.ws.send(JSON.stringify({ type: 'ping', ts: Date.now() }));
+        // Send a lightweight status request to keep the connection alive
+        // Uses the normal protocol format so the gateway doesn't reject it
+        const id = `keepalive_${Date.now()}`;
+        this.ws.send(JSON.stringify({ type: 'req', id, method: 'status', params: {} }));
       }
     }, 30000); // every 30s
   }
